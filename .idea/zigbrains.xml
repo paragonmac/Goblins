@@ -1,0 +1,3230 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="BuildScanner">
+    <option name="projects">
+      <list><![CDATA[{
+  "name": null,
+  "version": null,
+  "path": "/run/media/mac/4TB GIGA/Projects/Goblinoria",
+  "steps": [
+    {
+      "name": "install",
+      "description": "Copy build artifacts to prefix path",
+      "kind": "install_artifact"
+    },
+    {
+      "name": "uninstall",
+      "description": "Remove build artifacts from prefix path",
+      "kind": "uninstall"
+    },
+    {
+      "name": "run",
+      "description": "Run the app",
+      "kind": "run"
+    },
+    {
+      "name": "test",
+      "description": "Run tests",
+      "kind": "run"
+    }
+  ],
+  "modules": [
+    {
+      "root": "src/root.zig",
+      "public": true,
+      "imports": []
+    },
+    {
+      "root": "src/main.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "Goblinoria",
+          "owner": 0,
+          "module": 0
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "project": 1,
+      "lazy": false
+    }
+  ]
+}]]><![CDATA[{
+  "name": null,
+  "version": null,
+  "path": "/home/mac/.cache/zig/p/raylib_zig-5.6.0-dev-KE8REL5MBQAf3p497t52Xw9P7ojndIkVOWPXnLiLLw2P",
+  "steps": [
+    {
+      "name": "install",
+      "description": "Copy build artifacts to prefix path",
+      "kind": "install_artifact"
+    },
+    {
+      "name": "uninstall",
+      "description": "Remove build artifacts from prefix path",
+      "kind": "uninstall"
+    },
+    {
+      "name": "test",
+      "description": "Check for library compilation errors",
+      "kind": "compile"
+    },
+    {
+      "name": "examples",
+      "description": "Builds all the examples",
+      "kind": "compile"
+    },
+    {
+      "name": "raw_stream",
+      "description": "Plays a sine wave",
+      "kind": "run"
+    },
+    {
+      "name": "music_stream",
+      "description": "Use music stream to play an audio file",
+      "kind": "run"
+    },
+    {
+      "name": "sound_loading",
+      "description": "Load and play a song",
+      "kind": "run"
+    },
+    {
+      "name": "module_playing",
+      "description": "Module playing (streaming)",
+      "kind": "run"
+    },
+    {
+      "name": "basic_screen_manager",
+      "description": "Illustrates simple screen manager based on a state machine",
+      "kind": "run"
+    },
+    {
+      "name": "basic_window",
+      "description": "Creates a basic window with text",
+      "kind": "run"
+    },
+    {
+      "name": "core_monitor_change",
+      "description": "Simple Monitor Manager",
+      "kind": "run"
+    },
+    {
+      "name": "basic_window_web",
+      "description": "Creates a basic window with text (web)",
+      "kind": "run"
+    },
+    {
+      "name": "input_keys",
+      "description": "Simple keyboard input",
+      "kind": "run"
+    },
+    {
+      "name": "input_mouse",
+      "description": "Simple mouse input",
+      "kind": "run"
+    },
+    {
+      "name": "input_mouse_wheel",
+      "description": "Mouse wheel input",
+      "kind": "run"
+    },
+    {
+      "name": "input_multitouch",
+      "description": "Multitouch input",
+      "kind": "run"
+    },
+    {
+      "name": "2d_camera",
+      "description": "Shows the functionality of a 2D camera",
+      "kind": "run"
+    },
+    {
+      "name": "2d_camera_platformer",
+      "description": "2D camera platformer",
+      "kind": "run"
+    },
+    {
+      "name": "3d_camera_first_person",
+      "description": "Simple first person demo",
+      "kind": "run"
+    },
+    {
+      "name": "3d_camera_free",
+      "description": "Shows basic 3d camera initialization",
+      "kind": "run"
+    },
+    {
+      "name": "2d_camera_mouse_zoom",
+      "description": "Shows mouse zoom demo",
+      "kind": "run"
+    },
+    {
+      "name": "3d_picking",
+      "description": "Shows picking in 3d mode",
+      "kind": "run"
+    },
+    {
+      "name": "drop_files",
+      "description": "Demonstrates how to implement a drop files functionality",
+      "kind": "run"
+    },
+    {
+      "name": "window_flags",
+      "description": "Demonstrates various flags used during and after window creation",
+      "kind": "run"
+    },
+    {
+      "name": "gui_message_box",
+      "description": "Demonstrates showing and hiding a message box",
+      "kind": "run"
+    },
+    {
+      "name": "raymarching",
+      "description": "Uses a raymarching in a shader to render shapes",
+      "kind": "run"
+    },
+    {
+      "name": "shaders_ascii_rendering",
+      "description": "Post-processing to render in ASCII",
+      "kind": "run"
+    },
+    {
+      "name": "shaders_basic_pbr",
+      "description": "Demonstrates physically based rendering",
+      "kind": "run"
+    },
+    {
+      "name": "shaders_hybrid_render",
+      "description": "Demonstrates hybrid rendering",
+      "kind": "run"
+    },
+    {
+      "name": "texture_outline",
+      "description": "Uses a shader to create an outline around a sprite",
+      "kind": "run"
+    },
+    {
+      "name": "logo_raylib",
+      "description": "Renders the raylib-zig logo",
+      "kind": "run"
+    },
+    {
+      "name": "logo_raylib_anim",
+      "description": "Animates the raylib logo",
+      "kind": "run"
+    },
+    {
+      "name": "basic_shapes",
+      "description": "Renders various shapes",
+      "kind": "run"
+    },
+    {
+      "name": "bouncing_ball",
+      "description": "Bouncing ball animation with collision detection",
+      "kind": "run"
+    },
+    {
+      "name": "collision_area",
+      "description": "Demonstrates collision detection",
+      "kind": "run"
+    },
+    {
+      "name": "colors_palette",
+      "description": "Renders an interactive color palette",
+      "kind": "run"
+    },
+    {
+      "name": "draw_circle_sector",
+      "description": "Dynamically renders a circle sector using raygui",
+      "kind": "run"
+    },
+    {
+      "name": "draw_rectangle_rounded",
+      "description": "Dynamically renders a rounded rectangle using raygui",
+      "kind": "run"
+    },
+    {
+      "name": "draw_ring",
+      "description": "Dynaically renders a ring using raygui",
+      "kind": "run"
+    },
+    {
+      "name": "easings_ball_anim",
+      "description": "Renders a ball that demonstrates various easing functions",
+      "kind": "run"
+    },
+    {
+      "name": "easings_box_anim",
+      "description": "Renders a box that demonstrates various easing functions",
+      "kind": "run"
+    },
+    {
+      "name": "easings_rectangle_array",
+      "description": "Renders a box that demonstrates various easing functions",
+      "kind": "run"
+    },
+    {
+      "name": "following_eyes",
+      "description": "Renders eyes that follow mouse movement",
+      "kind": "run"
+    },
+    {
+      "name": "lines_bezier",
+      "description": "Renders an interactive line bezier",
+      "kind": "run"
+    },
+    {
+      "name": "rectangle_scaling",
+      "description": "Renders a resizable rectangle",
+      "kind": "run"
+    },
+    {
+      "name": "splines_drawing",
+      "description": "Renders a spline",
+      "kind": "run"
+    },
+    {
+      "name": "top_down_lights",
+      "description": "Renders a sceen with shadows and a top down persepective",
+      "kind": "run"
+    },
+    {
+      "name": "sprite_anim",
+      "description": "Animate a sprite",
+      "kind": "run"
+    },
+    {
+      "name": "textures_background_scrolling",
+      "description": "Background scrolling & parallax demo",
+      "kind": "run"
+    },
+    {
+      "name": "codepoints_loading",
+      "description": "Renders UTF-8 text",
+      "kind": "run"
+    },
+    {
+      "name": "draw_3d",
+      "description": "Renders an example of text rendered in a 3d world",
+      "kind": "run"
+    },
+    {
+      "name": "font_filters",
+      "description": "Demonstrates the various font filters",
+      "kind": "run"
+    },
+    {
+      "name": "font_loading",
+      "description": "Demonstrates how to load fonts",
+      "kind": "run"
+    },
+    {
+      "name": "font_sdf",
+      "description": "Demonstrates rending a sdf font",
+      "kind": "run"
+    },
+    {
+      "name": "font_spritefont",
+      "description": "Demonstrates rendering spritefonts",
+      "kind": "run"
+    },
+    {
+      "name": "format_text",
+      "description": "Renders variables as text",
+      "kind": "run"
+    },
+    {
+      "name": "input_box",
+      "description": "Show and example of an input_box",
+      "kind": "run"
+    },
+    {
+      "name": "raylib_fonts",
+      "description": "Show fonts included with raylib",
+      "kind": "run"
+    },
+    {
+      "name": "rectangle_bounds",
+      "description": "demonstrate a flexible, resizeable, text box",
+      "kind": "run"
+    },
+    {
+      "name": "unicode",
+      "description": "demonstrate rendering of unicode",
+      "kind": "run"
+    },
+    {
+      "name": "writing_anim",
+      "description": "Simple text animation",
+      "kind": "run"
+    },
+    {
+      "name": "textures_image_loading",
+      "description": "Image loading and texture creation",
+      "kind": "run"
+    },
+    {
+      "name": "models_heightmap",
+      "description": "Heightmap loading and drawing",
+      "kind": "run"
+    },
+    {
+      "name": "models_bone_socket",
+      "description": "Bone socket",
+      "kind": "run"
+    },
+    {
+      "name": "models_box_collisions",
+      "description": "Box collisions",
+      "kind": "run"
+    },
+    {
+      "name": "models_rlgl_solar_system",
+      "description": "Solar System",
+      "kind": "run"
+    }
+  ],
+  "modules": [
+    {
+      "root": "lib/raylib.zig",
+      "public": true,
+      "imports": []
+    },
+    {
+      "root": "lib/raygui.zig",
+      "public": true,
+      "imports": [
+        {
+          "name": "raylib-zig",
+          "owner": 1,
+          "module": 0
+        }
+      ]
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "examples/audio/raw_stream.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/audio/music_stream.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/audio/sound_loading.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/audio/module_playing.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/core/basic_screen_manager.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/core/basic_window.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/core/core_monitor_change.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/core/basic_window_web.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/core/input_keys.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/core/input_mouse.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/core/input_mouse_wheel.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/core/input_multitouch.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/core/2d_camera.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/core/2d_camera_platformer.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/core/3d_camera_first_person.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/core/3d_camera_free.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/core/2d_camera_mouse_zoom.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/core/3d_picking.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/core/drop_files.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/core/window_flags.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/gui/message_box.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/shaders/raymarching.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/shaders/shaders_ascii_rendering.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/shaders/shaders_basic_pbr.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/shaders/shaders_hybrid_render.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/shaders/texture_outline.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/shapes/logo_raylib.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/shapes/logo_raylib_anim.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/shapes/basic_shapes.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/shapes/bouncing_ball.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/shapes/collision_area.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/shapes/colors_palette.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/shapes/draw_circle_sector.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/shapes/draw_rectangle_rounded.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/shapes/draw_ring.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/shapes/easings_ball_anim.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/shapes/easings_box_anim.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/shapes/easings_rectangle_array.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/shapes/following_eyes.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/shapes/lines_bezier.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/shapes/rectangle_scaling.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/shapes/splines_drawing.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/shapes/top_down_lights.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/textures/sprite_anim.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/textures/textures_background_scrolling.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/text/codepoints_loading.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/text/draw_3d.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/text/font_filters.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/text/font_loading.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/text/font_sdf.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/text/font_spritefont.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/text/format_text.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/text/input_box.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/text/raylib_fonts.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/text/rectangle_bounds.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/text/unicode.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/text/writing_anim.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/textures/textures_image_loading.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/models/models_heightmap.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/models/models_bone_socket.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/models/models_box_collisions.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    },
+    {
+      "root": "examples/models/models_rlgl_solar_system.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "raylib",
+          "owner": 1,
+          "module": 0
+        },
+        {
+          "name": "raygui",
+          "owner": 1,
+          "module": 1
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "project": 2,
+      "lazy": false
+    },
+    {
+      "project": 5,
+      "lazy": false
+    },
+    {
+      "project": 3,
+      "lazy": false
+    },
+    {
+      "project": 6,
+      "lazy": false
+    }
+  ]
+}]]><![CDATA[{
+  "name": null,
+  "version": null,
+  "path": "/home/mac/.cache/zig/p/raylib-5.6.0-dev-whq8uCg2ywTzCiX3VEP9RuCMXR6_VnDBmkj8GjL_p5QN",
+  "steps": [
+    {
+      "name": "install",
+      "description": "Copy build artifacts to prefix path",
+      "kind": "install_artifact"
+    },
+    {
+      "name": "uninstall",
+      "description": "Remove build artifacts from prefix path",
+      "kind": "uninstall"
+    },
+    {
+      "name": "examples",
+      "description": "Build/Install all examples",
+      "kind": "top_level"
+    },
+    {
+      "name": "audio",
+      "description": "All audio examples",
+      "kind": "install_artifact"
+    },
+    {
+      "name": "audio_mixed_processor",
+      "description": "audio_mixed_processor",
+      "kind": "run"
+    },
+    {
+      "name": "audio_module_playing",
+      "description": "audio_module_playing",
+      "kind": "run"
+    },
+    {
+      "name": "audio_music_stream",
+      "description": "audio_music_stream",
+      "kind": "run"
+    },
+    {
+      "name": "audio_raw_stream",
+      "description": "audio_raw_stream",
+      "kind": "run"
+    },
+    {
+      "name": "audio_sound_loading",
+      "description": "audio_sound_loading",
+      "kind": "run"
+    },
+    {
+      "name": "audio_sound_multi",
+      "description": "audio_sound_multi",
+      "kind": "run"
+    },
+    {
+      "name": "audio_sound_positioning",
+      "description": "audio_sound_positioning",
+      "kind": "run"
+    },
+    {
+      "name": "audio_stream_effects",
+      "description": "audio_stream_effects",
+      "kind": "run"
+    },
+    {
+      "name": "core",
+      "description": "All core examples",
+      "kind": "install_artifact"
+    },
+    {
+      "name": "core_2d_camera",
+      "description": "core_2d_camera",
+      "kind": "run"
+    },
+    {
+      "name": "core_2d_camera_mouse_zoom",
+      "description": "core_2d_camera_mouse_zoom",
+      "kind": "run"
+    },
+    {
+      "name": "core_2d_camera_platformer",
+      "description": "core_2d_camera_platformer",
+      "kind": "run"
+    },
+    {
+      "name": "core_2d_camera_split_screen",
+      "description": "core_2d_camera_split_screen",
+      "kind": "run"
+    },
+    {
+      "name": "core_3d_camera_first_person",
+      "description": "core_3d_camera_first_person",
+      "kind": "run"
+    },
+    {
+      "name": "core_3d_camera_fps",
+      "description": "core_3d_camera_fps",
+      "kind": "run"
+    },
+    {
+      "name": "core_3d_camera_free",
+      "description": "core_3d_camera_free",
+      "kind": "run"
+    },
+    {
+      "name": "core_3d_camera_mode",
+      "description": "core_3d_camera_mode",
+      "kind": "run"
+    },
+    {
+      "name": "core_3d_camera_split_screen",
+      "description": "core_3d_camera_split_screen",
+      "kind": "run"
+    },
+    {
+      "name": "core_3d_picking",
+      "description": "core_3d_picking",
+      "kind": "run"
+    },
+    {
+      "name": "core_automation_events",
+      "description": "core_automation_events",
+      "kind": "run"
+    },
+    {
+      "name": "core_basic_screen_manager",
+      "description": "core_basic_screen_manager",
+      "kind": "run"
+    },
+    {
+      "name": "core_basic_window",
+      "description": "core_basic_window",
+      "kind": "run"
+    },
+    {
+      "name": "core_custom_frame_control",
+      "description": "core_custom_frame_control",
+      "kind": "run"
+    },
+    {
+      "name": "core_custom_logging",
+      "description": "core_custom_logging",
+      "kind": "run"
+    },
+    {
+      "name": "core_drop_files",
+      "description": "core_drop_files",
+      "kind": "run"
+    },
+    {
+      "name": "core_high_dpi",
+      "description": "core_high_dpi",
+      "kind": "run"
+    },
+    {
+      "name": "core_input_gamepad",
+      "description": "core_input_gamepad",
+      "kind": "run"
+    },
+    {
+      "name": "core_input_gestures",
+      "description": "core_input_gestures",
+      "kind": "run"
+    },
+    {
+      "name": "core_input_gestures_testbed",
+      "description": "core_input_gestures_testbed",
+      "kind": "run"
+    },
+    {
+      "name": "core_input_keys",
+      "description": "core_input_keys",
+      "kind": "run"
+    },
+    {
+      "name": "core_input_mouse",
+      "description": "core_input_mouse",
+      "kind": "run"
+    },
+    {
+      "name": "core_input_mouse_wheel",
+      "description": "core_input_mouse_wheel",
+      "kind": "run"
+    },
+    {
+      "name": "core_input_multitouch",
+      "description": "core_input_multitouch",
+      "kind": "run"
+    },
+    {
+      "name": "core_input_virtual_controls",
+      "description": "core_input_virtual_controls",
+      "kind": "run"
+    },
+    {
+      "name": "core_random_sequence",
+      "description": "core_random_sequence",
+      "kind": "run"
+    },
+    {
+      "name": "core_random_values",
+      "description": "core_random_values",
+      "kind": "run"
+    },
+    {
+      "name": "core_render_texture",
+      "description": "core_render_texture",
+      "kind": "run"
+    },
+    {
+      "name": "core_scissor_test",
+      "description": "core_scissor_test",
+      "kind": "run"
+    },
+    {
+      "name": "core_smooth_pixelperfect",
+      "description": "core_smooth_pixelperfect",
+      "kind": "run"
+    },
+    {
+      "name": "core_storage_values",
+      "description": "core_storage_values",
+      "kind": "run"
+    },
+    {
+      "name": "core_undo_redo",
+      "description": "core_undo_redo",
+      "kind": "run"
+    },
+    {
+      "name": "core_vr_simulator",
+      "description": "core_vr_simulator",
+      "kind": "run"
+    },
+    {
+      "name": "core_window_flags",
+      "description": "core_window_flags",
+      "kind": "run"
+    },
+    {
+      "name": "core_window_letterbox",
+      "description": "core_window_letterbox",
+      "kind": "run"
+    },
+    {
+      "name": "core_window_should_close",
+      "description": "core_window_should_close",
+      "kind": "run"
+    },
+    {
+      "name": "core_world_screen",
+      "description": "core_world_screen",
+      "kind": "run"
+    },
+    {
+      "name": "models",
+      "description": "All models examples",
+      "kind": "install_artifact"
+    },
+    {
+      "name": "models_animation_gpu_skinning",
+      "description": "models_animation_gpu_skinning",
+      "kind": "run"
+    },
+    {
+      "name": "models_animation_playing",
+      "description": "models_animation_playing",
+      "kind": "run"
+    },
+    {
+      "name": "models_billboard_rendering",
+      "description": "models_billboard_rendering",
+      "kind": "run"
+    },
+    {
+      "name": "models_bone_socket",
+      "description": "models_bone_socket",
+      "kind": "run"
+    },
+    {
+      "name": "models_box_collisions",
+      "description": "models_box_collisions",
+      "kind": "run"
+    },
+    {
+      "name": "models_cubicmap_rendering",
+      "description": "models_cubicmap_rendering",
+      "kind": "run"
+    },
+    {
+      "name": "models_first_person_maze",
+      "description": "models_first_person_maze",
+      "kind": "run"
+    },
+    {
+      "name": "models_geometric_shapes",
+      "description": "models_geometric_shapes",
+      "kind": "run"
+    },
+    {
+      "name": "models_heightmap_rendering",
+      "description": "models_heightmap_rendering",
+      "kind": "run"
+    },
+    {
+      "name": "models_loading",
+      "description": "models_loading",
+      "kind": "run"
+    },
+    {
+      "name": "models_loading_gltf",
+      "description": "models_loading_gltf",
+      "kind": "run"
+    },
+    {
+      "name": "models_loading_m3d",
+      "description": "models_loading_m3d",
+      "kind": "run"
+    },
+    {
+      "name": "models_loading_vox",
+      "description": "models_loading_vox",
+      "kind": "run"
+    },
+    {
+      "name": "models_mesh_generation",
+      "description": "models_mesh_generation",
+      "kind": "run"
+    },
+    {
+      "name": "models_mesh_picking",
+      "description": "models_mesh_picking",
+      "kind": "run"
+    },
+    {
+      "name": "models_orthographic_projection",
+      "description": "models_orthographic_projection",
+      "kind": "run"
+    },
+    {
+      "name": "models_point_rendering",
+      "description": "models_point_rendering",
+      "kind": "run"
+    },
+    {
+      "name": "models_rlgl_solar_system",
+      "description": "models_rlgl_solar_system",
+      "kind": "run"
+    },
+    {
+      "name": "models_skybox_rendering",
+      "description": "models_skybox_rendering",
+      "kind": "run"
+    },
+    {
+      "name": "models_tesseract_view",
+      "description": "models_tesseract_view",
+      "kind": "run"
+    },
+    {
+      "name": "models_textured_cube",
+      "description": "models_textured_cube",
+      "kind": "run"
+    },
+    {
+      "name": "models_waving_cubes",
+      "description": "models_waving_cubes",
+      "kind": "run"
+    },
+    {
+      "name": "models_yaw_pitch_roll",
+      "description": "models_yaw_pitch_roll",
+      "kind": "run"
+    },
+    {
+      "name": "others",
+      "description": "All others examples",
+      "kind": "install_artifact"
+    },
+    {
+      "name": "easings_testbed",
+      "description": "easings_testbed",
+      "kind": "run"
+    },
+    {
+      "name": "embedded_files_loading",
+      "description": "embedded_files_loading",
+      "kind": "run"
+    },
+    {
+      "name": "raylib_opengl_interop",
+      "description": "raylib_opengl_interop",
+      "kind": "run"
+    },
+    {
+      "name": "raymath_vector_angle",
+      "description": "raymath_vector_angle",
+      "kind": "run"
+    },
+    {
+      "name": "rlgl_compute_shader",
+      "description": "rlgl_compute_shader",
+      "kind": "run"
+    },
+    {
+      "name": "rlgl_standalone",
+      "description": "rlgl_standalone",
+      "kind": "run"
+    },
+    {
+      "name": "web_basic_window",
+      "description": "web_basic_window",
+      "kind": "run"
+    },
+    {
+      "name": "shaders",
+      "description": "All shaders examples",
+      "kind": "install_artifact"
+    },
+    {
+      "name": "shaders_basic_lighting",
+      "description": "shaders_basic_lighting",
+      "kind": "run"
+    },
+    {
+      "name": "shaders_basic_pbr",
+      "description": "shaders_basic_pbr",
+      "kind": "run"
+    },
+    {
+      "name": "shaders_custom_uniform",
+      "description": "shaders_custom_uniform",
+      "kind": "run"
+    },
+    {
+      "name": "shaders_deferred_rendering",
+      "description": "shaders_deferred_rendering",
+      "kind": "run"
+    },
+    {
+      "name": "shaders_depth_rendering",
+      "description": "shaders_depth_rendering",
+      "kind": "run"
+    },
+    {
+      "name": "shaders_depth_writing",
+      "description": "shaders_depth_writing",
+      "kind": "run"
+    },
+    {
+      "name": "shaders_eratosthenes_sieve",
+      "description": "shaders_eratosthenes_sieve",
+      "kind": "run"
+    },
+    {
+      "name": "shaders_fog_rendering",
+      "description": "shaders_fog_rendering",
+      "kind": "run"
+    },
+    {
+      "name": "shaders_hot_reloading",
+      "description": "shaders_hot_reloading",
+      "kind": "run"
+    },
+    {
+      "name": "shaders_hybrid_rendering",
+      "description": "shaders_hybrid_rendering",
+      "kind": "run"
+    },
+    {
+      "name": "shaders_julia_set",
+      "description": "shaders_julia_set",
+      "kind": "run"
+    },
+    {
+      "name": "shaders_lightmap_rendering",
+      "description": "shaders_lightmap_rendering",
+      "kind": "run"
+    },
+    {
+      "name": "shaders_mesh_instancing",
+      "description": "shaders_mesh_instancing",
+      "kind": "run"
+    },
+    {
+      "name": "shaders_model_shader",
+      "description": "shaders_model_shader",
+      "kind": "run"
+    },
+    {
+      "name": "shaders_multi_sample2d",
+      "description": "shaders_multi_sample2d",
+      "kind": "run"
+    },
+    {
+      "name": "shaders_normalmap_rendering",
+      "description": "shaders_normalmap_rendering",
+      "kind": "run"
+    },
+    {
+      "name": "shaders_palette_switch",
+      "description": "shaders_palette_switch",
+      "kind": "run"
+    },
+    {
+      "name": "shaders_postprocessing",
+      "description": "shaders_postprocessing",
+      "kind": "run"
+    },
+    {
+      "name": "shaders_raymarching_rendering",
+      "description": "shaders_raymarching_rendering",
+      "kind": "run"
+    },
+    {
+      "name": "shaders_rounded_rectangle",
+      "description": "shaders_rounded_rectangle",
+      "kind": "run"
+    },
+    {
+      "name": "shaders_shadowmap_rendering",
+      "description": "shaders_shadowmap_rendering",
+      "kind": "run"
+    },
+    {
+      "name": "shaders_shapes_textures",
+      "description": "shaders_shapes_textures",
+      "kind": "run"
+    },
+    {
+      "name": "shaders_simple_mask",
+      "description": "shaders_simple_mask",
+      "kind": "run"
+    },
+    {
+      "name": "shaders_spotlight_rendering",
+      "description": "shaders_spotlight_rendering",
+      "kind": "run"
+    },
+    {
+      "name": "shaders_texture_outline",
+      "description": "shaders_texture_outline",
+      "kind": "run"
+    },
+    {
+      "name": "shaders_texture_rendering",
+      "description": "shaders_texture_rendering",
+      "kind": "run"
+    },
+    {
+      "name": "shaders_texture_tiling",
+      "description": "shaders_texture_tiling",
+      "kind": "run"
+    },
+    {
+      "name": "shaders_texture_waves",
+      "description": "shaders_texture_waves",
+      "kind": "run"
+    },
+    {
+      "name": "shaders_vertex_displacement",
+      "description": "shaders_vertex_displacement",
+      "kind": "run"
+    },
+    {
+      "name": "shapes",
+      "description": "All shapes examples",
+      "kind": "install_artifact"
+    },
+    {
+      "name": "shapes_basic_shapes",
+      "description": "shapes_basic_shapes",
+      "kind": "run"
+    },
+    {
+      "name": "shapes_bouncing_ball",
+      "description": "shapes_bouncing_ball",
+      "kind": "run"
+    },
+    {
+      "name": "shapes_circle_sector_drawing",
+      "description": "shapes_circle_sector_drawing",
+      "kind": "run"
+    },
+    {
+      "name": "shapes_collision_area",
+      "description": "shapes_collision_area",
+      "kind": "run"
+    },
+    {
+      "name": "shapes_colors_palette",
+      "description": "shapes_colors_palette",
+      "kind": "run"
+    },
+    {
+      "name": "shapes_digital_clock",
+      "description": "shapes_digital_clock",
+      "kind": "run"
+    },
+    {
+      "name": "shapes_double_pendulum",
+      "description": "shapes_double_pendulum",
+      "kind": "run"
+    },
+    {
+      "name": "shapes_easings_ball",
+      "description": "shapes_easings_ball",
+      "kind": "run"
+    },
+    {
+      "name": "shapes_easings_box",
+      "description": "shapes_easings_box",
+      "kind": "run"
+    },
+    {
+      "name": "shapes_easings_rectangles",
+      "description": "shapes_easings_rectangles",
+      "kind": "run"
+    },
+    {
+      "name": "shapes_following_eyes",
+      "description": "shapes_following_eyes",
+      "kind": "run"
+    },
+    {
+      "name": "shapes_lines_bezier",
+      "description": "shapes_lines_bezier",
+      "kind": "run"
+    },
+    {
+      "name": "shapes_logo_raylib",
+      "description": "shapes_logo_raylib",
+      "kind": "run"
+    },
+    {
+      "name": "shapes_logo_raylib_anim",
+      "description": "shapes_logo_raylib_anim",
+      "kind": "run"
+    },
+    {
+      "name": "shapes_rectangle_advanced",
+      "description": "shapes_rectangle_advanced",
+      "kind": "run"
+    },
+    {
+      "name": "shapes_rectangle_scaling",
+      "description": "shapes_rectangle_scaling",
+      "kind": "run"
+    },
+    {
+      "name": "shapes_ring_drawing",
+      "description": "shapes_ring_drawing",
+      "kind": "run"
+    },
+    {
+      "name": "shapes_rounded_rectangle_drawing",
+      "description": "shapes_rounded_rectangle_drawing",
+      "kind": "run"
+    },
+    {
+      "name": "shapes_splines_drawing",
+      "description": "shapes_splines_drawing",
+      "kind": "run"
+    },
+    {
+      "name": "shapes_top_down_lights",
+      "description": "shapes_top_down_lights",
+      "kind": "run"
+    },
+    {
+      "name": "text",
+      "description": "All text examples",
+      "kind": "install_artifact"
+    },
+    {
+      "name": "text_3d_drawing",
+      "description": "text_3d_drawing",
+      "kind": "run"
+    },
+    {
+      "name": "text_codepoints_loading",
+      "description": "text_codepoints_loading",
+      "kind": "run"
+    },
+    {
+      "name": "text_font_filters",
+      "description": "text_font_filters",
+      "kind": "run"
+    },
+    {
+      "name": "text_font_loading",
+      "description": "text_font_loading",
+      "kind": "run"
+    },
+    {
+      "name": "text_font_sdf",
+      "description": "text_font_sdf",
+      "kind": "run"
+    },
+    {
+      "name": "text_font_spritefont",
+      "description": "text_font_spritefont",
+      "kind": "run"
+    },
+    {
+      "name": "text_format_text",
+      "description": "text_format_text",
+      "kind": "run"
+    },
+    {
+      "name": "text_inline_styling",
+      "description": "text_inline_styling",
+      "kind": "run"
+    },
+    {
+      "name": "text_input_box",
+      "description": "text_input_box",
+      "kind": "run"
+    },
+    {
+      "name": "text_rectangle_bounds",
+      "description": "text_rectangle_bounds",
+      "kind": "run"
+    },
+    {
+      "name": "text_sprite_fonts",
+      "description": "text_sprite_fonts",
+      "kind": "run"
+    },
+    {
+      "name": "text_unicode_emojis",
+      "description": "text_unicode_emojis",
+      "kind": "run"
+    },
+    {
+      "name": "text_unicode_ranges",
+      "description": "text_unicode_ranges",
+      "kind": "run"
+    },
+    {
+      "name": "text_writing_anim",
+      "description": "text_writing_anim",
+      "kind": "run"
+    },
+    {
+      "name": "textures",
+      "description": "All textures examples",
+      "kind": "install_artifact"
+    },
+    {
+      "name": "textures_background_scrolling",
+      "description": "textures_background_scrolling",
+      "kind": "run"
+    },
+    {
+      "name": "textures_blend_modes",
+      "description": "textures_blend_modes",
+      "kind": "run"
+    },
+    {
+      "name": "textures_bunnymark",
+      "description": "textures_bunnymark",
+      "kind": "run"
+    },
+    {
+      "name": "textures_fog_of_war",
+      "description": "textures_fog_of_war",
+      "kind": "run"
+    },
+    {
+      "name": "textures_gif_player",
+      "description": "textures_gif_player",
+      "kind": "run"
+    },
+    {
+      "name": "textures_image_channel",
+      "description": "textures_image_channel",
+      "kind": "run"
+    },
+    {
+      "name": "textures_image_drawing",
+      "description": "textures_image_drawing",
+      "kind": "run"
+    },
+    {
+      "name": "textures_image_generation",
+      "description": "textures_image_generation",
+      "kind": "run"
+    },
+    {
+      "name": "textures_image_kernel",
+      "description": "textures_image_kernel",
+      "kind": "run"
+    },
+    {
+      "name": "textures_image_loading",
+      "description": "textures_image_loading",
+      "kind": "run"
+    },
+    {
+      "name": "textures_image_processing",
+      "description": "textures_image_processing",
+      "kind": "run"
+    },
+    {
+      "name": "textures_image_rotate",
+      "description": "textures_image_rotate",
+      "kind": "run"
+    },
+    {
+      "name": "textures_image_text",
+      "description": "textures_image_text",
+      "kind": "run"
+    },
+    {
+      "name": "textures_logo_raylib",
+      "description": "textures_logo_raylib",
+      "kind": "run"
+    },
+    {
+      "name": "textures_mouse_painting",
+      "description": "textures_mouse_painting",
+      "kind": "run"
+    },
+    {
+      "name": "textures_npatch_drawing",
+      "description": "textures_npatch_drawing",
+      "kind": "run"
+    },
+    {
+      "name": "textures_particles_blending",
+      "description": "textures_particles_blending",
+      "kind": "run"
+    },
+    {
+      "name": "textures_polygon_drawing",
+      "description": "textures_polygon_drawing",
+      "kind": "run"
+    },
+    {
+      "name": "textures_raw_data",
+      "description": "textures_raw_data",
+      "kind": "run"
+    },
+    {
+      "name": "textures_sprite_animation",
+      "description": "textures_sprite_animation",
+      "kind": "run"
+    },
+    {
+      "name": "textures_sprite_button",
+      "description": "textures_sprite_button",
+      "kind": "run"
+    },
+    {
+      "name": "textures_sprite_explosion",
+      "description": "textures_sprite_explosion",
+      "kind": "run"
+    },
+    {
+      "name": "textures_srcrec_dstrec",
+      "description": "textures_srcrec_dstrec",
+      "kind": "run"
+    },
+    {
+      "name": "textures_textured_curve",
+      "description": "textures_textured_curve",
+      "kind": "run"
+    },
+    {
+      "name": "textures_tiled_drawing",
+      "description": "textures_tiled_drawing",
+      "kind": "run"
+    },
+    {
+      "name": "textures_to_image",
+      "description": "textures_to_image",
+      "kind": "run"
+    }
+  ],
+  "modules": [
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    },
+    {
+      "root": "<null>",
+      "public": false,
+      "imports": []
+    }
+  ],
+  "dependencies": [
+    {
+      "project": 3,
+      "lazy": false
+    },
+    {
+      "project": 4,
+      "lazy": false
+    }
+  ]
+}]]><![CDATA[{
+  "name": null,
+  "version": null,
+  "path": "/home/mac/.cache/zig/p/N-V-__8AAJl1DwBezhYo_VE6f53mPVm00R-Fk28NPW7P14EQ",
+  "steps": [
+    {
+      "name": "install",
+      "description": "Copy build artifacts to prefix path",
+      "kind": "uninstall"
+    },
+    {
+      "name": "uninstall",
+      "description": "Remove build artifacts from prefix path",
+      "kind": "uninstall"
+    }
+  ],
+  "modules": [],
+  "dependencies": []
+}]]><![CDATA[{
+  "name": null,
+  "version": null,
+  "path": "/home/mac/.cache/zig/p/zemscripten-0.2.0-dev-sRlDqApRAACspTbAZnuNKWIzfWzSYgYkb2nWAXZ-tqqt",
+  "steps": [
+    {
+      "name": "install",
+      "description": "Copy build artifacts to prefix path",
+      "kind": "uninstall"
+    },
+    {
+      "name": "uninstall",
+      "description": "Remove build artifacts from prefix path",
+      "kind": "uninstall"
+    }
+  ],
+  "modules": [
+    {
+      "root": "src/zemscripten.zig",
+      "public": true,
+      "imports": []
+    }
+  ],
+  "dependencies": []
+}]]><![CDATA[{
+  "name": null,
+  "version": null,
+  "path": "/home/mac/.cache/zig/p/N-V-__8AALUbbwDKkSH4nbf3Ml_dTWo9qbELvle5i9eQZMuo",
+  "steps": [
+    {
+      "name": "install",
+      "description": "Copy build artifacts to prefix path",
+      "kind": "uninstall"
+    },
+    {
+      "name": "uninstall",
+      "description": "Remove build artifacts from prefix path",
+      "kind": "uninstall"
+    }
+  ],
+  "modules": [],
+  "dependencies": []
+}]]><![CDATA[{
+  "name": null,
+  "version": null,
+  "path": "/home/mac/.cache/zig/p/zemscripten-0.2.0-dev-sRlDqFJSAAB8hgnRt5DDMKP3zLlDtMnUDwYRJVCa5lGY",
+  "steps": [
+    {
+      "name": "install",
+      "description": "Copy build artifacts to prefix path",
+      "kind": "uninstall"
+    },
+    {
+      "name": "uninstall",
+      "description": "Remove build artifacts from prefix path",
+      "kind": "uninstall"
+    }
+  ],
+  "modules": [
+    {
+      "root": "src/zemscripten.zig",
+      "public": true,
+      "imports": []
+    }
+  ],
+  "dependencies": []
+}]]></list>
+    </option>
+  </component>
+  <component name="ZigToolchain" toolchain="68171ebe-e290-45fb-9dad-7e48888c8a80" />
+</project>
