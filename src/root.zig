@@ -2,8 +2,10 @@
 
 const std = @import("std");
 const BlockType = u8;
-const WORLD_SIZE_CHUNKS = 8;
-const CHUNK_SIZE = 32;
+const WORLD_SIZE_CHUNKS = 4;
+const CHUNK_SIZE = 4;
+
+pub const Renderer = @import("renderer.zig").Renderer;
 
 const Chunk = struct {
     blocks: [CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE]BlockType,
@@ -62,5 +64,17 @@ pub const World = struct {
             @as(u32, local_x);
 
         self.chunks[chunk_index].blocks[block_index] = blockChange;
+    }
+
+    pub fn seedDebug(self: *World) void {
+        // Solid cube for verifying the renderer.
+        // 9x9x9 cube starting at the origin.
+        for (0..9) |x| {
+            for (0..9) |y| {
+                for (0..9) |z| {
+                    self.setBlock(@intCast(x), @intCast(y), @intCast(z), 1);
+                }
+            }
+        }
     }
 };

@@ -1,5 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/zigtools/zls/master/schema.json",
+  "zig_exe_path": "/usr/bin/zig",
   "enable_snippets": true,
   "enable_build_on_save": true,
   "inlay_hints_show_variable_type_hints": true,
