@@ -2,23 +2,14 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
-			"name": "Run Goblinoria (LLDB)",
-			"type": "lldb",
-			"request": "launch",
-			"program": "${workspaceFolder}/zig-out/bin/Goblinoria",
-			"args": [],
-			"cwd": "${workspaceFolder}",
-			"preLaunchTask": "zig: build",
-			"console": "integratedTerminal"
-		},
-		{
-			"name": "Run Goblinoria (cppdbg)",
+			"name": "Run Goblinoria",
 			"type": "cppdbg",
 			"request": "launch",
 			"program": "${workspaceFolder}/zig-out/bin/Goblinoria",
 			"args": [],
 			"cwd": "${workspaceFolder}",
 			"preLaunchTask": "zig: build",
+			"MIMode": "gdb",
 			"stopAtEntry": false,
 			"externalConsole": false
 		}
