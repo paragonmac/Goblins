@@ -1,6 +1,7 @@
 const std = @import("std");
 const Goblinoria = @import("Goblinoria");
 const raylib = @import("raylib");
+const debugMenu = @import("debugTools");
 
 pub fn run() !void {
     const screenWidth: i32 = 800;
@@ -21,9 +22,20 @@ pub fn run() !void {
     var renderer = Goblinoria.Renderer.init();
 
     while (!raylib.windowShouldClose()) {
+        // Input handling
+        if (raylib.isKeyPressed(raylib.KeyboardKey.f2)) {
+            debugMenu.toggle();
+        }
+
         raylib.beginDrawing();
         raylib.clearBackground(raylib.Color.black);
-        renderer.render(world);
+
+        // 3D rendering
+        const tris_drawn = renderer.render(world);
+
+        // 2D overlay (debug menu)
+        debugMenu.draw(10, 10, tris_drawn);
+
         raylib.endDrawing();
     }
 }

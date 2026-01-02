@@ -23,6 +23,16 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     const raylib = raylib_zig_dep.module("raylib");
+
+    // Add debugTools module
+    const debug_tools = b.addModule("debugTools", .{
+        .root_source_file = b.path("tools/debugTools.zig"),
+        .target = target,
+        .imports = &.{
+            .{ .name = "raylib", .module = raylib },
+        },
+    });
+
     // It's also possible to define more custom flags to toggle optional features
     // of this build script using `b.option()`. All defined flags (including
     // target and optimize options) will be listed when running `zig build --help`
@@ -90,6 +100,7 @@ pub fn build(b: *std.Build) void {
                 // importing modules from different packages).
                 .{ .name = "Goblinoria", .module = mod },
                 .{ .name = "raylib", .module = raylib },
+                .{ .name = "debugTools", .module = debug_tools },
             },
         }),
     });

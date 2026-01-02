@@ -18,11 +18,14 @@ pub const Renderer = struct {
             },
         };
     }
-    pub fn render(self: *Renderer, world: anytype) void {
+
+    pub fn render(self: *Renderer, world: anytype) i32 {
         raylib.beginMode3D(self.ortho_camera);
         defer raylib.endMode3D();
 
         raylib.drawGrid(20, 1.0);
+
+        var cubes_drawn: i32 = 0;
 
         for (0..10) |x| {
             for (0..10) |y| {
@@ -40,9 +43,13 @@ pub const Renderer = struct {
                         };
                         raylib.drawCube(pos, 1.0, 1.0, 1.0, raylib.Color.gray);
                         raylib.drawCubeWires(pos, 1.0, 1.0, 1.0, raylib.Color.sky_blue);
+                        cubes_drawn += 1;
                     }
                 }
             }
         }
+
+        // Each cube = 12 triangles (6 faces × 2 triangles per face)
+        return cubes_drawn * 12;
     }
 };
