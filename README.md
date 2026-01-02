@@ -21,6 +21,14 @@ If you want to prefetch deps (optional):
 
 - `zig build --fetch`
 
+## Raylib (about `libs/`)
+
+This project uses the Zig dependency `raylib-zig` (see `build.zig.zon`), so you do **not** need a pre-populated `libs/` folder to build.
+
+If you still want a local `libs/` folder (for convenience/offline use), you can export the built raylib static library and common headers into `libs/raylib/`:
+
+- `tools/export-raylib-libs.sh`
+
 ## VS Code setup (optional)
 
 This repo does **not** commit `.vscode/` (it’s user/editor specific), but a working template is provided.
