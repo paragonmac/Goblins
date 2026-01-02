@@ -8,8 +8,11 @@ pub fn run() !void {
     const screenHeight: i32 = 600;
     const title: [:0]const u8 = "Goblinoria";
 
+    raylib.setConfigFlags(raylib.ConfigFlags{ .window_resizable = true });
     raylib.initWindow(screenWidth, screenHeight, title);
     defer raylib.closeWindow();
+
+    raylib.setTargetFPS(144); // Cap at 144 FPS (or 60 for VSync with most monitors)
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
