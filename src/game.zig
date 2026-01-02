@@ -27,6 +27,9 @@ pub fn run() !void {
             debugMenu.toggle();
         }
 
+        // Camera update
+        renderer.update();
+
         raylib.beginDrawing();
         raylib.clearBackground(raylib.Color.black);
 

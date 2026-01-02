@@ -1,7 +1,7 @@
 const std = @import("std");
 
 pub const debugMenu = struct {
-    var state: bool = false;
+    var state: bool = true;
 };
 pub fn isOpen() bool {
     return debugMenu.state;

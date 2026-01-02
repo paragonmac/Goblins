@@ -12,8 +12,15 @@ const Chunk = struct {
     dirty: bool,
 };
 
+pub const Worker = struct {
+    x: f32,
+    y: f32,
+    z: f32,
+};
+
 pub const World = struct {
     chunks: [WORLD_SIZE_CHUNKS * WORLD_SIZE_CHUNKS * WORLD_SIZE_CHUNKS]Chunk,
+    worker: ?Worker,
 
     pub fn init(allocator: std.mem.Allocator) !*World {
         const world = try allocator.create(World);
@@ -21,6 +28,8 @@ pub const World = struct {
             @memset(&chunk.blocks, 0);
             chunk.dirty = false;
         }
+        // Initialize worker on top of the debug cube
+        world.worker = Worker{ .x = 4.0, .y = 9.5, .z = 4.0 };
         return world;
     }
     pub fn deinit(self: *World, allocator: std.mem.Allocator) void {
