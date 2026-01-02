@@ -6,6 +6,9 @@ zig-out/
 # Editor/tooling
 .vscode/
 zls.json
+.idea/
+.run/
+.claude/
 
 # Logs
 *.log
