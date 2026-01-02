@@ -17,6 +17,11 @@ pub fn main() !void {
     defer raylib.closeWindow();
 
 
+    world.setBlock(14, 44, 2, 3);
+    const testBlockSet = world.getBlock(14, 44, 2);
+
+    std.log.debug("testBlockSet: {}", .{testBlockSet});
+
 
     while (!raylib.windowShouldClose()) {
         raylib.beginDrawing();
