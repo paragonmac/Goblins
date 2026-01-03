@@ -13,6 +13,11 @@ pub const WORLD_TOTAL_CHUNKS: usize = WORLD_SIZE_CHUNKS_X * WORLD_SIZE_CHUNKS_Y 
 pub const CHUNK_SIZE = 8;
 pub const MAX_DEPTH_BLOCKS: i32 = 20000;
 
+const MATERIAL_ID_MIN: BlockType = 1;
+const MATERIAL_ID_MAX: BlockType = 9;
+const MATERIAL_ID_COUNT: u8 = 9;
+const WORLDGEN_SEED: u64 = 0x9E37_79B9_7F4A_7C15; // fixed seed for deterministic worldgen
+
 pub const Renderer = @import("renderer.zig").Renderer;
 
 const Chunk = struct {
@@ -319,6 +324,45 @@ pub const World = struct {
         colors: std.ArrayList(u8),
         allocator: std.mem.Allocator,
 
+        const ColorRGB = struct { r: u8, g: u8, b: u8 };
+
+        // 1..9 earth-tone palette. Index 0 is unused (air).
+        const material_palette: [10]ColorRGB = .{
+            .{ .r = 0, .g = 0, .b = 0 }, // 0 (unused)
+            .{ .r = 210, .g = 180, .b = 140 }, // 1 sand
+            .{ .r = 199, .g = 172, .b = 128 }, // 2 dry grass
+            .{ .r = 184, .g = 152, .b = 108 }, // 3 tan
+            .{ .r = 170, .g = 132, .b = 84 }, // 4 ochre
+            .{ .r = 153, .g = 106, .b = 72 }, // 5 clay
+            .{ .r = 139, .g = 90, .b = 43 }, // 6 brown
+            .{ .r = 112, .g = 74, .b = 38 }, // 7 dark soil
+            .{ .r = 124, .g = 124, .b = 124 }, // 8 stone
+            .{ .r = 84, .g = 84, .b = 84 }, // 9 dark stone
+        };
+
+        fn clampMaterialId(material_id: BlockType) BlockType {
+            if (material_id < MATERIAL_ID_MIN) return MATERIAL_ID_MIN;
+            if (material_id > MATERIAL_ID_MAX) return MATERIAL_ID_MAX;
+            return material_id;
+        }
+
+        fn faceShade(normal: raylib.Vector3) u8 {
+            // Simple directional shading factor in 0..255.
+            if (normal.y > 0.5) return 255; // top
+            if (normal.y < -0.5) return 150; // bottom
+            if (normal.x > 0.5 or normal.x < -0.5) return 190; // X sides
+            return 210; // Z sides
+        }
+
+        fn shadeColor(base: ColorRGB, shade: u8) ColorRGB {
+            const sr: u16 = @intCast(shade);
+            return .{
+                .r = @intCast((@as(u16, base.r) * sr) / 255),
+                .g = @intCast((@as(u16, base.g) * sr) / 255),
+                .b = @intCast((@as(u16, base.b) * sr) / 255),
+            };
+        }
+
         fn init(allocator: std.mem.Allocator) MeshBuilder {
             return .{
                 .vertices = .{},
@@ -338,6 +382,7 @@ pub const World = struct {
 
         fn addQuad(
             self: *MeshBuilder,
+            material_id: BlockType,
             v1: raylib.Vector3,
             v2: raylib.Vector3,
             v3: raylib.Vector3,
@@ -363,36 +408,13 @@ pub const World = struct {
                 try self.normals.appendSlice(self.allocator, &[_]f32{ normal.x, normal.y, normal.z });
             }
 
-            // Calculate color based on face direction (simple directional shading)
-            var r: u8 = 255;
-            var g: u8 = 255;
-            var b: u8 = 255;
-
-            if (normal.y > 0.5) {
-                // Top face - brightest (full light from above)
-                r = 210;
-                g = 180;
-                b = 140;
-            } else if (normal.y < -0.5) {
-                // Bottom face - darkest
-                r = 101;
-                g = 67;
-                b = 33;
-            } else if (normal.x > 0.5 or normal.x < -0.5) {
-                // X-axis faces - medium-dark
-                r = 139;
-                g = 90;
-                b = 43;
-            } else {
-                // Z-axis faces - medium
-                r = 160;
-                g = 110;
-                b = 60;
-            }
+            const mid = clampMaterialId(material_id);
+            const base = material_palette[@as(usize, @intCast(mid))];
+            const shaded = shadeColor(base, faceShade(normal));
 
             // Add color for all 6 vertices (RGBA format)
             for (0..6) |_| {
-                try self.colors.appendSlice(self.allocator, &[_]u8{ r, g, b, 255 });
+                try self.colors.appendSlice(self.allocator, &[_]u8{ shaded.r, shaded.g, shaded.b, 255 });
             }
         }
     };
@@ -512,6 +534,7 @@ pub const World = struct {
                             .{ fx + half, fy_fixed + half + eps, fz - half },
                         );
                         try builder.addQuad(
+                            block_type,
                             v1,
                             v2,
                             v3,
@@ -535,6 +558,7 @@ pub const World = struct {
                             .{ fx - half, fy_fixed - half - eps, fz + half },
                         );
                         try builder.addQuad(
+                            block_type,
                             v1,
                             v2,
                             v3,
@@ -558,6 +582,7 @@ pub const World = struct {
                             .{ fx - half, fy_fixed + half, fz + half + eps },
                         );
                         try builder.addQuad(
+                            block_type,
                             v1,
                             v2,
                             v3,
@@ -581,6 +606,7 @@ pub const World = struct {
                             .{ fx + half, fy_fixed - half, fz - half - eps },
                         );
                         try builder.addQuad(
+                            block_type,
                             v1,
                             v2,
                             v3,
@@ -604,6 +630,7 @@ pub const World = struct {
                             .{ fx + half + eps, fy_fixed - half, fz + half },
                         );
                         try builder.addQuad(
+                            block_type,
                             v1,
                             v2,
                             v3,
@@ -627,6 +654,7 @@ pub const World = struct {
                             .{ fx - half - eps, fy_fixed + half, fz - half },
                         );
                         try builder.addQuad(
+                            block_type,
                             v1,
                             v2,
                             v3,
@@ -766,6 +794,9 @@ pub const World = struct {
         const world_size_y: usize = WORLD_SIZE_CHUNKS_Y * CHUNK_SIZE;
         const world_size_z: usize = WORLD_SIZE_CHUNKS_Z * CHUNK_SIZE;
 
+        // Seeded PRNG for deterministic, random-looking material assignment.
+        var prng = std.Random.DefaultPrng.init(WORLDGEN_SEED);
+
         // Clear existing blocks (seedDebug is allowed to blow away previous content).
         for (&self.chunks) |*chunk| {
             @memset(&chunk.blocks, 0);
@@ -774,7 +805,7 @@ pub const World = struct {
         const sea_internal: i32 = @as(i32, self.sea_level_y_index);
         const solid_limit_internal_y: i32 = sea_internal - self.vertical_scroll;
 
-        // Fill chunks up to sea level using chunk-wide memset when possible (fast).
+        // Fill chunks up to sea level.
         for (0..WORLD_SIZE_CHUNKS_Y) |cy| {
             const y0: i32 = @intCast(cy * CHUNK_SIZE);
             const y1: i32 = y0 + (CHUNK_SIZE - 1);
@@ -784,7 +815,19 @@ pub const World = struct {
                 for (0..WORLD_SIZE_CHUNKS_X) |cx| {
                     for (0..WORLD_SIZE_CHUNKS_Z) |cz| {
                         const idx = chunkToIndex(cx, cy, cz);
-                        @memset(&self.chunks[idx].blocks, 1);
+                        // Fill per-voxel with random material IDs 1..9.
+                        for (0..CHUNK_SIZE) |ly| {
+                            for (0..CHUNK_SIZE) |lx| {
+                                for (0..CHUNK_SIZE) |lz| {
+                                    const mat: BlockType = prng.random().intRangeAtMost(BlockType, 1, 9);
+                                    const block_index: usize =
+                                        lz * CHUNK_SIZE * CHUNK_SIZE +
+                                        ly * CHUNK_SIZE +
+                                        lx;
+                                    self.chunks[idx].blocks[block_index] = mat;
+                                }
+                            }
+                        }
                     }
                 }
             } else if (y0 <= solid_limit_internal_y and y1 > solid_limit_internal_y) {
@@ -797,11 +840,12 @@ pub const World = struct {
                         while (ly < solid_in_chunk) : (ly += 1) {
                             for (0..CHUNK_SIZE) |lx| {
                                 for (0..CHUNK_SIZE) |lz| {
+                                    const mat: BlockType = prng.random().intRangeAtMost(BlockType, 1, 9);
                                     const block_index: usize =
                                         lz * CHUNK_SIZE * CHUNK_SIZE +
                                         ly * CHUNK_SIZE +
                                         lx;
-                                    self.chunks[idx].blocks[block_index] = 1;
+                                    self.chunks[idx].blocks[block_index] = mat;
                                 }
                             }
                         }
@@ -822,8 +866,8 @@ pub const World = struct {
             }
         }
 
-        // Create some scattered structures to test performance
-        // Towers in corners
+        // Create some scattered structures to test performance.
+        // Towers in corners.
         const tower_height = 20;
         for (0..5) |x| {
             for (0..tower_height) |y| {
@@ -831,7 +875,8 @@ pub const World = struct {
                     const world_y: i32 = @as(i32, @intCast(y)) + 1;
                     const internal_y: i32 = world_y - self.vertical_scroll + sea_internal;
                     if (internal_y >= 0 and internal_y < @as(i32, @intCast(world_size_y))) {
-                        self.setBlockRaw(@intCast(x), @intCast(internal_y), @intCast(z), 1);
+                        const mat: BlockType = prng.random().intRangeAtMost(BlockType, 1, 9);
+                        self.setBlockRaw(@intCast(x), @intCast(internal_y), @intCast(z), mat);
                     }
                 }
             }
@@ -843,7 +888,8 @@ pub const World = struct {
                     const world_y: i32 = @as(i32, @intCast(y)) + 1;
                     const internal_y: i32 = world_y - self.vertical_scroll + sea_internal;
                     if (internal_y >= 0 and internal_y < @as(i32, @intCast(world_size_y))) {
-                        self.setBlockRaw(@intCast(x), @intCast(internal_y), @intCast(z), 1);
+                        const mat: BlockType = prng.random().intRangeAtMost(BlockType, 1, 9);
+                        self.setBlockRaw(@intCast(x), @intCast(internal_y), @intCast(z), mat);
                     }
                 }
             }
@@ -855,7 +901,8 @@ pub const World = struct {
                     const world_y: i32 = @as(i32, @intCast(y)) + 1;
                     const internal_y: i32 = world_y - self.vertical_scroll + sea_internal;
                     if (internal_y >= 0 and internal_y < @as(i32, @intCast(world_size_y))) {
-                        self.setBlockRaw(@intCast(x), @intCast(internal_y), @intCast(z), 1);
+                        const mat: BlockType = prng.random().intRangeAtMost(BlockType, 1, 9);
+                        self.setBlockRaw(@intCast(x), @intCast(internal_y), @intCast(z), mat);
                     }
                 }
             }
@@ -867,13 +914,14 @@ pub const World = struct {
                     const world_y: i32 = @as(i32, @intCast(y)) + 1;
                     const internal_y: i32 = world_y - self.vertical_scroll + sea_internal;
                     if (internal_y >= 0 and internal_y < @as(i32, @intCast(world_size_y))) {
-                        self.setBlockRaw(@intCast(x), @intCast(internal_y), @intCast(z), 1);
+                        const mat: BlockType = prng.random().intRangeAtMost(BlockType, 1, 9);
+                        self.setBlockRaw(@intCast(x), @intCast(internal_y), @intCast(z), mat);
                     }
                 }
             }
         }
 
-        // Central pyramid
+        // Central pyramid.
         const pyramid_base = 30;
         const pyramid_x = world_size_x / 2 - pyramid_base / 2;
         const pyramid_z = world_size_z / 2 - pyramid_base / 2;
@@ -889,7 +937,8 @@ pub const World = struct {
                         const world_y: i32 = @as(i32, @intCast(layer)) + 1;
                         const internal_y: i32 = world_y - self.vertical_scroll + sea_internal;
                         if (internal_y >= 0 and internal_y < @as(i32, @intCast(world_size_y))) {
-                            self.setBlockRaw(@intCast(x), @intCast(internal_y), @intCast(z), 1);
+                            const mat: BlockType = prng.random().intRangeAtMost(BlockType, 1, 9);
+                            self.setBlockRaw(@intCast(x), @intCast(internal_y), @intCast(z), mat);
                         }
                     }
                 }
