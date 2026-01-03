@@ -197,13 +197,22 @@ const IDENTITY_MATRIX = raylib.Matrix{
     .m15 = 1,
 };
 
+pub const RenderStats = struct {
+    triangles_drawn: i32,
+    chunks_drawn: i32,
+    chunks_regenerated: i32,
+    visible_blocks_drawn: i32,
+    solid_blocks_drawn: i32,
+};
+
 pub const Renderer = struct {
     ortho_camera: raylib.Camera3D,
     material: raylib.Material,
 
     pub fn init() Renderer {
-        const orthoCameraPosition = raylib.Vector3{ .x = 80.0, .y = 60.0, .z = 80.0 };
-        const orthoCameraTarget = raylib.Vector3{ .x = 52.0, .y = 15.0, .z = 52.0 };
+        const sea_y: f32 = @as(f32, @floatFromInt(root.World.seaLevelYIndexDefault()));
+        const orthoCameraTarget = raylib.Vector3{ .x = 52.0, .y = sea_y, .z = 52.0 };
+        const orthoCameraPosition = raylib.Vector3{ .x = 80.0, .y = sea_y + 45.0, .z = 80.0 };
 
         return .{
             .ortho_camera = .{
@@ -250,7 +259,7 @@ pub const Renderer = struct {
         }
     }
 
-    pub fn render(self: *Renderer, world: anytype) i32 {
+    pub fn render(self: *Renderer, world: anytype) RenderStats {
         raylib.beginMode3D(self.ortho_camera);
         defer raylib.endMode3D();
 
@@ -264,6 +273,19 @@ pub const Renderer = struct {
         var triangles_drawn: i32 = 0;
         var chunks_regenerated: i32 = 0;
         var chunks_drawn: i32 = 0;
+        var visible_blocks_drawn: i32 = 0;
+        var solid_blocks_drawn: i32 = 0;
+
+        const model_pos = raylib.Vector3{ .x = 0, .y = 0, .z = 0 };
+        const model_scale: f32 = 1.0;
+        const mesh_tint = raylib.Color.ray_white;
+
+        const rlgl = raylib.gl;
+        const RL_LINES: i32 = 0x0001;
+        const grid_color = raylib.Color{ .r = 0, .g = 0, .b = 0, .a = 120 };
+
+        var drawn_chunk_indices: [WORLD_SIZE_CHUNKS * WORLD_SIZE_CHUNKS * WORLD_SIZE_CHUNKS]usize = undefined;
+        var drawn_chunk_count: usize = 0;
 
         // Iterate chunks (not blocks!)
         for (0..WORLD_SIZE_CHUNKS) |cx| {
@@ -284,7 +306,7 @@ pub const Renderer = struct {
                     }
 
                     const chunk_mesh = &world.chunk_meshes[chunk_idx];
-                    if (chunk_mesh.mesh == null) continue; // Empty chunk
+                    if (chunk_mesh.model == null) continue; // Empty chunk
 
                     // Chunk-level frustum culling
                     if (!isChunkInFrustum(
@@ -293,18 +315,41 @@ pub const Renderer = struct {
                         chunk_mesh.world_max,
                     )) continue;
 
-                    // Draw cached mesh (single call!)
-                    raylib.drawMesh(
-                        chunk_mesh.mesh.?,
-                        self.material,
-                        IDENTITY_MATRIX,
-                    );
+                    // Draw cached model
+                    raylib.drawModel(chunk_mesh.model.?, model_pos, model_scale, mesh_tint);
+
+                    drawn_chunk_indices[drawn_chunk_count] = chunk_idx;
+                    drawn_chunk_count += 1;
 
                     chunks_drawn += 1;
                     triangles_drawn += @intCast(chunk_mesh.triangle_count);
+                    visible_blocks_drawn += @intCast(chunk_mesh.visible_block_count);
+                    solid_blocks_drawn += @intCast(chunk_mesh.solid_block_count);
                 }
             }
         }
+
+        // Draw grid overlay: quad edges only (no triangle diagonals).
+        rlgl.rlEnableSmoothLines();
+        rlgl.rlSetLineWidth(3.0);
+        rlgl.rlBegin(RL_LINES);
+        rlgl.rlColor4ub(grid_color.r, grid_color.g, grid_color.b, grid_color.a);
+        for (drawn_chunk_indices[0..drawn_chunk_count]) |idx| {
+            const chunk_mesh = &world.chunk_meshes[idx];
+            if (chunk_mesh.grid_line_vertices) |verts| {
+                var i: usize = 0;
+                while (i + 2 < verts.len) : (i += 3) {
+                    rlgl.rlVertex3f(verts[i], verts[i + 1], verts[i + 2]);
+                }
+            }
+        }
+        rlgl.rlEnd();
+        // rlgl state (line width/smoothing) is global, and raylib batches draws.
+        // Force a flush here so the grid is rasterized with the intended state
+        // before we restore defaults for subsequent rendering.
+        rlgl.rlDrawRenderBatchActive();
+        rlgl.rlSetLineWidth(1.0);
+        rlgl.rlDisableSmoothLines();
 
         // Debug output (print if any chunks regenerated)
         if (chunks_regenerated > 0) {
@@ -314,11 +359,17 @@ pub const Renderer = struct {
         // Render worker if present
         if (world.worker) |w| {
             const worker_pos = raylib.Vector3{ .x = w.x, .y = w.y, .z = w.z };
-            raylib.drawCube(worker_pos, 0.5, 0.8, 0.5, raylib.Color.orange);
-            raylib.drawCubeWires(worker_pos, 0.5, 0.8, 0.5, raylib.Color.brown);
+            raylib.drawCube(worker_pos, 0.5, 0.8, 0.5, raylib.Color.red);
+            raylib.drawCubeWires(worker_pos, 0.5, 0.8, 0.5, raylib.Color.maroon);
             triangles_drawn += 12; // 6 faces * 2 tris
         }
 
-        return triangles_drawn;
+        return .{
+            .triangles_drawn = triangles_drawn,
+            .chunks_drawn = chunks_drawn,
+            .chunks_regenerated = chunks_regenerated,
+            .visible_blocks_drawn = visible_blocks_drawn,
+            .solid_blocks_drawn = solid_blocks_drawn,
+        };
     }
 };

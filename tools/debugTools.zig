@@ -33,13 +33,22 @@ fn getGPUInfo() struct { vendor: [:0]const u8, renderer: [:0]const u8 } {
 }
 
 /// Draw the debug menu with stats
-pub fn draw(x: i32, y: i32, tris_drawn: i32) void {
+pub fn draw(
+    x: i32,
+    y: i32,
+    tris_drawn: i32,
+    visible_blocks_drawn: i32,
+    solid_blocks_drawn: i32,
+    total_blocks_in_memory: i32,
+    chunks_drawn: i32,
+    chunks_regenerated: i32,
+) void {
     if (!debugMenu.state) return;
 
     const rl = @import("raylib");
 
     const padding: i32 = 10;
-    const font_size: i32 = 20;
+    const font_size: i32 = 16;
     const line_height: i32 = font_size + 4;
 
     // Get stats from raylib
@@ -50,10 +59,20 @@ pub fn draw(x: i32, y: i32, tris_drawn: i32) void {
     var fps_buf: [64]u8 = undefined;
     var ft_buf: [64]u8 = undefined;
     var tris_buf: [64]u8 = undefined;
+    var blocks_buf: [64]u8 = undefined;
+    var solid_buf: [64]u8 = undefined;
+    var mem_blocks_buf: [64]u8 = undefined;
+    var chunks_buf: [64]u8 = undefined;
+    var regen_buf: [64]u8 = undefined;
 
     const fps_str = std.fmt.bufPrintZ(&fps_buf, "FPS: {d}", .{fps}) catch "FPS: Error";
     const ft_str = std.fmt.bufPrintZ(&ft_buf, "Frame Time: {d:.2}ms", .{frame_time * 1000.0}) catch "Frame Time: Error";
     const tris_str = std.fmt.bufPrintZ(&tris_buf, "Triangles: {d}", .{tris_drawn}) catch "Triangles: Error";
+    const blocks_str = std.fmt.bufPrintZ(&blocks_buf, "Blocks (visible): {d}", .{visible_blocks_drawn}) catch "Blocks: Error";
+    const solid_str = std.fmt.bufPrintZ(&solid_buf, "Blocks (solid): {d}", .{solid_blocks_drawn}) catch "Solid: Error";
+    const mem_blocks_str = std.fmt.bufPrintZ(&mem_blocks_buf, "Blocks (memory): {d}", .{total_blocks_in_memory}) catch "Memory: Error";
+    const chunks_str = std.fmt.bufPrintZ(&chunks_buf, "Chunks drawn: {d}", .{chunks_drawn}) catch "Chunks: Error";
+    const regen_str = std.fmt.bufPrintZ(&regen_buf, "Chunks regen: {d}", .{chunks_regenerated}) catch "Regen: Error";
 
     const gpu_info = getGPUInfo();
 
@@ -61,10 +80,15 @@ pub fn draw(x: i32, y: i32, tris_drawn: i32) void {
     const line2 = fps_str;
     const line3 = ft_str;
     const line4 = tris_str;
-    const line5 = gpu_info.vendor;
-    const line6 = gpu_info.renderer;
-    const line7 = "====================";
-    const line8 = "[F2] Toggle menu";
+    const line5 = blocks_str;
+    const line6 = solid_str;
+    const line7 = mem_blocks_str;
+    const line8 = chunks_str;
+    const line9 = regen_str;
+    const line10 = gpu_info.vendor;
+    const line11 = gpu_info.renderer;
+    const line12 = "====================";
+    const line13 = "[F2] Toggle menu";
 
     // Measure text widths
     const w1: i32 = rl.measureText(line1, font_size);
@@ -75,6 +99,11 @@ pub fn draw(x: i32, y: i32, tris_drawn: i32) void {
     const w6: i32 = rl.measureText(line6, font_size);
     const w7: i32 = rl.measureText(line7, font_size);
     const w8: i32 = rl.measureText(line8, font_size);
+    const w9: i32 = rl.measureText(line9, font_size);
+    const w10: i32 = rl.measureText(line10, font_size);
+    const w11: i32 = rl.measureText(line11, font_size);
+    const w12: i32 = rl.measureText(line12, font_size);
+    const w13: i32 = rl.measureText(line13, font_size);
 
     var max_w: i32 = w1;
     if (w2 > max_w) max_w = w2;
@@ -84,9 +113,14 @@ pub fn draw(x: i32, y: i32, tris_drawn: i32) void {
     if (w6 > max_w) max_w = w6;
     if (w7 > max_w) max_w = w7;
     if (w8 > max_w) max_w = w8;
+    if (w9 > max_w) max_w = w9;
+    if (w10 > max_w) max_w = w10;
+    if (w11 > max_w) max_w = w11;
+    if (w12 > max_w) max_w = w12;
+    if (w13 > max_w) max_w = w13;
 
     const box_w: i32 = max_w + padding * 2;
-    const box_h: i32 = (line_height * 8) + padding * 2;
+    const box_h: i32 = (line_height * 13) + padding * 2;
 
     // Draw background and border
     rl.drawRectangle(x, y, box_w, box_h, rl.Color{ .r = 0, .g = 0, .b = 0, .a = 180 });
@@ -102,11 +136,21 @@ pub fn draw(x: i32, y: i32, tris_drawn: i32) void {
     current_y += line_height;
     rl.drawText(line4, x + padding, current_y, font_size, rl.Color.lime);
     current_y += line_height;
-    rl.drawText(line5, x + padding, current_y, font_size, rl.Color.yellow);
+    rl.drawText(line5, x + padding, current_y, font_size, rl.Color.lime);
     current_y += line_height;
-    rl.drawText(line6, x + padding, current_y, font_size, rl.Color.yellow);
+    rl.drawText(line6, x + padding, current_y, font_size, rl.Color.lime);
     current_y += line_height;
-    rl.drawText(line7, x + padding, current_y, font_size, rl.Color.ray_white);
+    rl.drawText(line7, x + padding, current_y, font_size, rl.Color.lime);
     current_y += line_height;
-    rl.drawText(line8, x + padding, current_y, font_size, rl.Color.gray);
+    rl.drawText(line8, x + padding, current_y, font_size, rl.Color.lime);
+    current_y += line_height;
+    rl.drawText(line9, x + padding, current_y, font_size, rl.Color.lime);
+    current_y += line_height;
+    rl.drawText(line10, x + padding, current_y, font_size, rl.Color.yellow);
+    current_y += line_height;
+    rl.drawText(line11, x + padding, current_y, font_size, rl.Color.yellow);
+    current_y += line_height;
+    rl.drawText(line12, x + padding, current_y, font_size, rl.Color.ray_white);
+    current_y += line_height;
+    rl.drawText(line13, x + padding, current_y, font_size, rl.Color.gray);
 }
