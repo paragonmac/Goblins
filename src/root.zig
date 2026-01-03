@@ -3,8 +3,15 @@
 const std = @import("std");
 const raylib = @import("raylib");
 const BlockType = u8;
-pub const WORLD_SIZE_CHUNKS = 13;
+pub const WORLD_SIZE_CHUNKS_BASE = 13;
+pub const WORLD_TILES_X = 5; // current cube + 4 more (option A)
+pub const WORLD_TILES_Z = 5; // current cube + 4 more (option A)
+pub const WORLD_SIZE_CHUNKS_X = WORLD_SIZE_CHUNKS_BASE * WORLD_TILES_X;
+pub const WORLD_SIZE_CHUNKS_Y = WORLD_SIZE_CHUNKS_BASE;
+pub const WORLD_SIZE_CHUNKS_Z = WORLD_SIZE_CHUNKS_BASE * WORLD_TILES_Z;
+pub const WORLD_TOTAL_CHUNKS: usize = WORLD_SIZE_CHUNKS_X * WORLD_SIZE_CHUNKS_Y * WORLD_SIZE_CHUNKS_Z;
 pub const CHUNK_SIZE = 8;
+pub const MAX_DEPTH_BLOCKS: i32 = 20000;
 
 pub const Renderer = @import("renderer.zig").Renderer;
 
@@ -52,24 +59,37 @@ pub const Worker = struct {
 };
 
 pub const World = struct {
-    chunks: [WORLD_SIZE_CHUNKS * WORLD_SIZE_CHUNKS * WORLD_SIZE_CHUNKS]Chunk,
-    chunk_meshes: [WORLD_SIZE_CHUNKS * WORLD_SIZE_CHUNKS * WORLD_SIZE_CHUNKS]ChunkMesh,
+    chunks: [WORLD_TOTAL_CHUNKS]Chunk,
+    chunk_meshes: [WORLD_TOTAL_CHUNKS]ChunkMesh,
     allocator: std.mem.Allocator,
     worker: ?Worker,
     sea_level_y_index: i16,
     top_render_y_index: i16,
+    /// World-space vertical offset in blocks for the current in-memory window.
+    /// Displayed level = (internal_y - sea_level_y_index) + vertical_scroll.
+    vertical_scroll: i32,
 
-    pub fn worldSizeBlocks() i16 {
-        return WORLD_SIZE_CHUNKS * CHUNK_SIZE;
+    pub fn worldSizeBlocksX() i16 {
+        return @intCast(WORLD_SIZE_CHUNKS_X * CHUNK_SIZE);
+    }
+
+    pub fn worldSizeBlocksY() i16 {
+        return @intCast(WORLD_SIZE_CHUNKS_Y * CHUNK_SIZE);
+    }
+
+    pub fn worldSizeBlocksZ() i16 {
+        return @intCast(WORLD_SIZE_CHUNKS_Z * CHUNK_SIZE);
     }
 
     pub fn totalBlockSlots() u32 {
-        const s: u32 = @intCast(WORLD_SIZE_CHUNKS * CHUNK_SIZE);
-        return s * s * s;
+        const sx: u32 = @intCast(WORLD_SIZE_CHUNKS_X * CHUNK_SIZE);
+        const sy: u32 = @intCast(WORLD_SIZE_CHUNKS_Y * CHUNK_SIZE);
+        const sz: u32 = @intCast(WORLD_SIZE_CHUNKS_Z * CHUNK_SIZE);
+        return sx * sy * sz;
     }
 
     pub fn worldMaxYIndex() i16 {
-        return worldSizeBlocks() - 1;
+        return worldSizeBlocksY() - 1;
     }
 
     pub fn seaLevelYIndexDefault() i16 {
@@ -78,9 +98,46 @@ pub const World = struct {
         return worldMaxYIndex() - mountain_headroom;
     }
 
-    pub fn topRenderLevel(self: *const World) i16 {
+    pub fn topRenderLevel(self: *const World) i32 {
         // Displayed to player: sea level is 0, below is negative.
-        return self.top_render_y_index - self.sea_level_y_index;
+        return @as(i32, self.top_render_y_index - self.sea_level_y_index) + self.vertical_scroll;
+    }
+
+    pub fn setTopRenderLevel(self: *World, desired_level: i32) void {
+        var desired = desired_level;
+        if (desired < -MAX_DEPTH_BLOCKS) desired = -MAX_DEPTH_BLOCKS;
+
+        const max_internal: i32 = @as(i32, worldMaxYIndex());
+        const sea_internal: i32 = @as(i32, self.sea_level_y_index);
+
+        // internal = desired - scroll + sea
+        var desired_internal: i32 = desired - self.vertical_scroll + sea_internal;
+        var window_shifted = false;
+
+        if (desired_internal < 0) {
+            // Shift the window so desired maps to the TOP of the in-memory window.
+            // We render blocks with internal_y <= top_render_y_index, so mapping the
+            // cutoff to max_internal keeps a full depth range below it.
+            self.vertical_scroll = desired + sea_internal - max_internal;
+            desired_internal = max_internal;
+            window_shifted = true;
+        } else if (desired_internal > max_internal) {
+            // Shift the window so desired maps to internal y=max.
+            self.vertical_scroll = desired + sea_internal;
+            desired_internal = 0;
+            window_shifted = true;
+        }
+
+        self.setTopRenderYIndex(@intCast(desired_internal));
+        if (window_shifted) {
+            // Rebuild the debug world content for the new vertical window.
+            // (Keeps memory constant while allowing very deep levels.)
+            self.seedDebug();
+        }
+    }
+
+    pub fn adjustTopRenderLevel(self: *World, delta: i32) void {
+        self.setTopRenderLevel(self.topRenderLevel() + delta);
     }
 
     pub fn markAllChunksDirty(self: *World) void {
@@ -89,11 +146,36 @@ pub const World = struct {
         }
     }
 
+    fn markChunksDirtyForYRange(self: *World, y_a: i16, y_b: i16) void {
+        const y0: i16 = @min(y_a, y_b);
+        const y1: i16 = @max(y_a, y_b);
+
+        const cy0: usize = @intCast(@divFloor(@as(i32, y0), CHUNK_SIZE));
+        const cy1: usize = @intCast(@divFloor(@as(i32, y1), CHUNK_SIZE));
+        const max_cy: usize = WORLD_SIZE_CHUNKS_Y - 1;
+
+        const clamped_cy0: usize = @min(cy0, max_cy);
+        const clamped_cy1: usize = @min(cy1, max_cy);
+
+        var cy: usize = clamped_cy0;
+        while (cy <= clamped_cy1) : (cy += 1) {
+            for (0..WORLD_SIZE_CHUNKS_X) |cx| {
+                for (0..WORLD_SIZE_CHUNKS_Z) |cz| {
+                    self.chunks[chunkToIndex(cx, cy, cz)].dirty = true;
+                }
+            }
+        }
+    }
+
     pub fn setTopRenderYIndex(self: *World, desired: i16) void {
         const clamped = std.math.clamp(desired, 0, worldMaxYIndex());
         if (clamped == self.top_render_y_index) return;
+        const old = self.top_render_y_index;
         self.top_render_y_index = clamped;
-        self.markAllChunksDirty();
+
+        // Only chunks whose block range intersects the changed cutoff band can change mesh.
+        // If delta is 1, this touches at most two chunk-Y layers.
+        self.markChunksDirtyForYRange(old, clamped);
     }
 
     pub fn init(allocator: std.mem.Allocator) !*World {
@@ -112,6 +194,7 @@ pub const World = struct {
 
         world.sea_level_y_index = seaLevelYIndexDefault();
         world.top_render_y_index = world.sea_level_y_index;
+        world.vertical_scroll = 0;
 
         // Initialize worker on top of the debug cube
         world.worker = Worker{ .x = 4.0, .y = @as(f32, @floatFromInt(world.sea_level_y_index)) + 9.5, .z = 4.0 };
@@ -125,22 +208,19 @@ pub const World = struct {
         }
         allocator.destroy(self);
     }
-    pub fn getBlock(self: *const World, x: u8, y: u8, z: u8) BlockType {
-        const chunk_x = x / CHUNK_SIZE;
-        const chunk_y = y / CHUNK_SIZE;
-        const chunk_z = z / CHUNK_SIZE;
-        const chunk_index: u32 =
-            @as(u32, chunk_z) * WORLD_SIZE_CHUNKS * WORLD_SIZE_CHUNKS +
-            @as(u32, chunk_y) * WORLD_SIZE_CHUNKS +
-            @as(u32, chunk_x);
+    pub fn getBlock(self: *const World, x: u16, y: u16, z: u16) BlockType {
+        const chunk_x: usize = @intCast(x / CHUNK_SIZE);
+        const chunk_y: usize = @intCast(y / CHUNK_SIZE);
+        const chunk_z: usize = @intCast(z / CHUNK_SIZE);
+        const chunk_index: usize = chunkToIndex(chunk_x, chunk_y, chunk_z);
 
-        const local_x = x % CHUNK_SIZE;
-        const local_y = y % CHUNK_SIZE;
-        const local_z = z % CHUNK_SIZE;
-        const block_index: u32 =
-            @as(u32, local_z) * CHUNK_SIZE * CHUNK_SIZE +
-            @as(u32, local_y) * CHUNK_SIZE +
-            @as(u32, local_x);
+        const local_x: u16 = x % CHUNK_SIZE;
+        const local_y: u16 = y % CHUNK_SIZE;
+        const local_z: u16 = z % CHUNK_SIZE;
+        const block_index: usize =
+            @as(usize, local_z) * CHUNK_SIZE * CHUNK_SIZE +
+            @as(usize, local_y) * CHUNK_SIZE +
+            @as(usize, local_x);
 
         return self.chunks[chunk_index].blocks[block_index];
     }
@@ -149,8 +229,7 @@ pub const World = struct {
     /// Returns false for out-of-bounds (treat as air)
     pub fn isBlockSolid(self: *const World, x: i16, y: i16, z: i16) bool {
         if (x < 0 or y < 0 or z < 0) return false;
-        const max_coord: i16 = WORLD_SIZE_CHUNKS * CHUNK_SIZE;
-        if (x >= max_coord or y >= max_coord or z >= max_coord) return false;
+        if (x >= worldSizeBlocksX() or y >= worldSizeBlocksY() or z >= worldSizeBlocksZ()) return false;
         return self.getBlock(@intCast(x), @intCast(y), @intCast(z)) > 0;
     }
 
@@ -161,79 +240,76 @@ pub const World = struct {
         return self.isBlockSolid(x, y, z);
     }
 
-    pub fn setBlock(self: *World, x: u8, y: u8, z: u8, blockChange: u8) void {
-        const chunk_x = x / CHUNK_SIZE;
-        const chunk_y = y / CHUNK_SIZE;
-        const chunk_z = z / CHUNK_SIZE;
-        const chunk_index: u32 =
-            @as(u32, chunk_z) * WORLD_SIZE_CHUNKS * WORLD_SIZE_CHUNKS +
-            @as(u32, chunk_y) * WORLD_SIZE_CHUNKS +
-            @as(u32, chunk_x);
+    pub fn setBlock(self: *World, x: u16, y: u16, z: u16, blockChange: u8) void {
+        const chunk_x: usize = @intCast(x / CHUNK_SIZE);
+        const chunk_y: usize = @intCast(y / CHUNK_SIZE);
+        const chunk_z: usize = @intCast(z / CHUNK_SIZE);
+        const chunk_index: usize = chunkToIndex(chunk_x, chunk_y, chunk_z);
 
-        const local_x = x % CHUNK_SIZE;
-        const local_y = y % CHUNK_SIZE;
-        const local_z = z % CHUNK_SIZE;
-        const block_index: u32 =
-            @as(u32, local_z) * CHUNK_SIZE * CHUNK_SIZE +
-            @as(u32, local_y) * CHUNK_SIZE +
-            @as(u32, local_x);
+        const local_x: u16 = x % CHUNK_SIZE;
+        const local_y: u16 = y % CHUNK_SIZE;
+        const local_z: u16 = z % CHUNK_SIZE;
+        const block_index: usize =
+            @as(usize, local_z) * CHUNK_SIZE * CHUNK_SIZE +
+            @as(usize, local_y) * CHUNK_SIZE +
+            @as(usize, local_x);
 
         self.chunks[chunk_index].blocks[block_index] = blockChange;
 
         // Mark chunk dirty for mesh regeneration
         self.chunks[chunk_index].dirty = true;
 
+        const stride_y: usize = WORLD_SIZE_CHUNKS_X;
+        const stride_z: usize = WORLD_SIZE_CHUNKS_X * WORLD_SIZE_CHUNKS_Y;
+
         // Mark neighbor chunks dirty if on boundary (affects their visible faces)
         if (local_x == 0 and chunk_x > 0) {
             const neighbor_idx = chunk_index - 1;
             self.chunks[neighbor_idx].dirty = true;
         }
-        if (local_x == CHUNK_SIZE - 1 and chunk_x < WORLD_SIZE_CHUNKS - 1) {
+        if (local_x == CHUNK_SIZE - 1 and chunk_x < WORLD_SIZE_CHUNKS_X - 1) {
             const neighbor_idx = chunk_index + 1;
             self.chunks[neighbor_idx].dirty = true;
         }
         if (local_y == 0 and chunk_y > 0) {
-            const neighbor_idx = chunk_index - WORLD_SIZE_CHUNKS;
+            const neighbor_idx = chunk_index - stride_y;
             self.chunks[neighbor_idx].dirty = true;
         }
-        if (local_y == CHUNK_SIZE - 1 and chunk_y < WORLD_SIZE_CHUNKS - 1) {
-            const neighbor_idx = chunk_index + WORLD_SIZE_CHUNKS;
+        if (local_y == CHUNK_SIZE - 1 and chunk_y < WORLD_SIZE_CHUNKS_Y - 1) {
+            const neighbor_idx = chunk_index + stride_y;
             self.chunks[neighbor_idx].dirty = true;
         }
         if (local_z == 0 and chunk_z > 0) {
-            const neighbor_idx = chunk_index - (WORLD_SIZE_CHUNKS * WORLD_SIZE_CHUNKS);
+            const neighbor_idx = chunk_index - stride_z;
             self.chunks[neighbor_idx].dirty = true;
         }
-        if (local_z == CHUNK_SIZE - 1 and chunk_z < WORLD_SIZE_CHUNKS - 1) {
-            const neighbor_idx = chunk_index + (WORLD_SIZE_CHUNKS * WORLD_SIZE_CHUNKS);
+        if (local_z == CHUNK_SIZE - 1 and chunk_z < WORLD_SIZE_CHUNKS_Z - 1) {
+            const neighbor_idx = chunk_index + stride_z;
             self.chunks[neighbor_idx].dirty = true;
         }
     }
 
-    fn setBlockRaw(self: *World, x: u8, y: u8, z: u8, block_value: u8) void {
-        const chunk_x = x / CHUNK_SIZE;
-        const chunk_y = y / CHUNK_SIZE;
-        const chunk_z = z / CHUNK_SIZE;
-        const chunk_index: u32 =
-            @as(u32, chunk_z) * WORLD_SIZE_CHUNKS * WORLD_SIZE_CHUNKS +
-            @as(u32, chunk_y) * WORLD_SIZE_CHUNKS +
-            @as(u32, chunk_x);
+    fn setBlockRaw(self: *World, x: u16, y: u16, z: u16, block_value: u8) void {
+        const chunk_x: usize = @intCast(x / CHUNK_SIZE);
+        const chunk_y: usize = @intCast(y / CHUNK_SIZE);
+        const chunk_z: usize = @intCast(z / CHUNK_SIZE);
+        const chunk_index: usize = chunkToIndex(chunk_x, chunk_y, chunk_z);
 
-        const local_x = x % CHUNK_SIZE;
-        const local_y = y % CHUNK_SIZE;
-        const local_z = z % CHUNK_SIZE;
-        const block_index: u32 =
-            @as(u32, local_z) * CHUNK_SIZE * CHUNK_SIZE +
-            @as(u32, local_y) * CHUNK_SIZE +
-            @as(u32, local_x);
+        const local_x: u16 = x % CHUNK_SIZE;
+        const local_y: u16 = y % CHUNK_SIZE;
+        const local_z: u16 = z % CHUNK_SIZE;
+        const block_index: usize =
+            @as(usize, local_z) * CHUNK_SIZE * CHUNK_SIZE +
+            @as(usize, local_y) * CHUNK_SIZE +
+            @as(usize, local_x);
 
         self.chunks[chunk_index].blocks[block_index] = block_value;
     }
 
-    fn chunkToIndex(cx: usize, cy: usize, cz: usize) u32 {
-        return @intCast(cz * WORLD_SIZE_CHUNKS * WORLD_SIZE_CHUNKS +
-            cy * WORLD_SIZE_CHUNKS +
-            cx);
+    fn chunkToIndex(cx: usize, cy: usize, cz: usize) usize {
+        return cz * WORLD_SIZE_CHUNKS_X * WORLD_SIZE_CHUNKS_Y +
+            cy * WORLD_SIZE_CHUNKS_X +
+            cx;
     }
 
     const MeshBuilder = struct {
@@ -332,9 +408,9 @@ pub const World = struct {
         var builder = MeshBuilder.init(self.allocator);
         defer builder.deinit();
 
-        const world_x_base: u8 = @intCast(chunk_x * CHUNK_SIZE);
-        const world_y_base: u8 = @intCast(chunk_y * CHUNK_SIZE);
-        const world_z_base: u8 = @intCast(chunk_z * CHUNK_SIZE);
+        const world_x_base: u16 = @intCast(chunk_x * CHUNK_SIZE);
+        const world_y_base: u16 = @intCast(chunk_y * CHUNK_SIZE);
+        const world_z_base: u16 = @intCast(chunk_z * CHUNK_SIZE);
 
         const h: f32 = 0.5;
 
@@ -389,9 +465,9 @@ pub const World = struct {
         for (0..CHUNK_SIZE) |lx| {
             for (0..CHUNK_SIZE) |ly| {
                 for (0..CHUNK_SIZE) |lz| {
-                    const wx = world_x_base + @as(u8, @intCast(lx));
-                    const wy = world_y_base + @as(u8, @intCast(ly));
-                    const wz = world_z_base + @as(u8, @intCast(lz));
+                    const wx: u16 = world_x_base + @as(u16, @intCast(lx));
+                    const wy: u16 = world_y_base + @as(u16, @intCast(ly));
+                    const wz: u16 = world_z_base + @as(u16, @intCast(lz));
 
                     const block_type = self.getBlock(wx, wy, wz);
                     if (block_type == 0) continue; // Skip air
@@ -686,28 +762,61 @@ pub const World = struct {
     }
 
     pub fn seedDebug(self: *World) void {
-        const world_size = WORLD_SIZE_CHUNKS * CHUNK_SIZE; // 104
+        const world_size_x: usize = WORLD_SIZE_CHUNKS_X * CHUNK_SIZE;
+        const world_size_y: usize = WORLD_SIZE_CHUNKS_Y * CHUNK_SIZE;
+        const world_size_z: usize = WORLD_SIZE_CHUNKS_Z * CHUNK_SIZE;
 
-        const sea_y: u8 = @intCast(self.sea_level_y_index);
+        // Clear existing blocks (seedDebug is allowed to blow away previous content).
+        for (&self.chunks) |*chunk| {
+            @memset(&chunk.blocks, 0);
+        }
 
-        // Fill everything below sea level so slicing below 0 reveals terrain.
-        // (Otherwise, lowering the slice quickly results in nothing rendered.)
-        const sea_y_count: usize = @as(usize, @intCast(sea_y)) + 1;
-        for (0..world_size) |x| {
-            for (0..world_size) |z| {
-                for (0..sea_y_count) |y| {
-                    self.setBlockRaw(@intCast(x), @intCast(y), @intCast(z), 1);
+        const sea_internal: i32 = @as(i32, self.sea_level_y_index);
+        const solid_limit_internal_y: i32 = sea_internal - self.vertical_scroll;
+
+        // Fill chunks up to sea level using chunk-wide memset when possible (fast).
+        for (0..WORLD_SIZE_CHUNKS_Y) |cy| {
+            const y0: i32 = @intCast(cy * CHUNK_SIZE);
+            const y1: i32 = y0 + (CHUNK_SIZE - 1);
+
+            if (y1 <= solid_limit_internal_y) {
+                // Entire chunk layer is solid.
+                for (0..WORLD_SIZE_CHUNKS_X) |cx| {
+                    for (0..WORLD_SIZE_CHUNKS_Z) |cz| {
+                        const idx = chunkToIndex(cx, cy, cz);
+                        @memset(&self.chunks[idx].blocks, 1);
+                    }
+                }
+            } else if (y0 <= solid_limit_internal_y and y1 > solid_limit_internal_y) {
+                // Partial layer: fill only internal y <= solid_limit.
+                const solid_in_chunk: usize = @intCast((solid_limit_internal_y - y0) + 1);
+                for (0..WORLD_SIZE_CHUNKS_X) |cx| {
+                    for (0..WORLD_SIZE_CHUNKS_Z) |cz| {
+                        const idx = chunkToIndex(cx, cy, cz);
+                        var ly: usize = 0;
+                        while (ly < solid_in_chunk) : (ly += 1) {
+                            for (0..CHUNK_SIZE) |lx| {
+                                for (0..CHUNK_SIZE) |lz| {
+                                    const block_index: usize =
+                                        lz * CHUNK_SIZE * CHUNK_SIZE +
+                                        ly * CHUNK_SIZE +
+                                        lx;
+                                    self.chunks[idx].blocks[block_index] = 1;
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
 
         // Carve a vertical shaft near center for visual depth when slicing.
-        const center_x: usize = world_size / 2;
-        const center_z: usize = world_size / 2;
+        const center_x: usize = world_size_x / 2;
+        const center_z: usize = world_size_z / 2;
         const shaft_half: usize = 2;
         for (center_x - shaft_half..center_x + shaft_half) |x| {
             for (center_z - shaft_half..center_z + shaft_half) |z| {
-                for (0..sea_y_count) |y| {
+                for (0..world_size_y) |y| {
                     self.setBlockRaw(@intCast(x), @intCast(y), @intCast(z), 0);
                 }
             }
@@ -719,39 +828,55 @@ pub const World = struct {
         for (0..5) |x| {
             for (0..tower_height) |y| {
                 for (0..5) |z| {
-                    self.setBlockRaw(@intCast(x), @intCast(sea_y + @as(u8, @intCast(y))), @intCast(z), 1);
+                    const world_y: i32 = @as(i32, @intCast(y)) + 1;
+                    const internal_y: i32 = world_y - self.vertical_scroll + sea_internal;
+                    if (internal_y >= 0 and internal_y < @as(i32, @intCast(world_size_y))) {
+                        self.setBlockRaw(@intCast(x), @intCast(internal_y), @intCast(z), 1);
+                    }
                 }
             }
         }
 
-        for (world_size - 5..world_size) |x| {
+        for (world_size_x - 5..world_size_x) |x| {
             for (0..tower_height) |y| {
                 for (0..5) |z| {
-                    self.setBlockRaw(@intCast(x), @intCast(sea_y + @as(u8, @intCast(y))), @intCast(z), 1);
+                    const world_y: i32 = @as(i32, @intCast(y)) + 1;
+                    const internal_y: i32 = world_y - self.vertical_scroll + sea_internal;
+                    if (internal_y >= 0 and internal_y < @as(i32, @intCast(world_size_y))) {
+                        self.setBlockRaw(@intCast(x), @intCast(internal_y), @intCast(z), 1);
+                    }
                 }
             }
         }
 
         for (0..5) |x| {
             for (0..tower_height) |y| {
-                for (world_size - 5..world_size) |z| {
-                    self.setBlockRaw(@intCast(x), @intCast(sea_y + @as(u8, @intCast(y))), @intCast(z), 1);
+                for (world_size_z - 5..world_size_z) |z| {
+                    const world_y: i32 = @as(i32, @intCast(y)) + 1;
+                    const internal_y: i32 = world_y - self.vertical_scroll + sea_internal;
+                    if (internal_y >= 0 and internal_y < @as(i32, @intCast(world_size_y))) {
+                        self.setBlockRaw(@intCast(x), @intCast(internal_y), @intCast(z), 1);
+                    }
                 }
             }
         }
 
-        for (world_size - 5..world_size) |x| {
+        for (world_size_x - 5..world_size_x) |x| {
             for (0..tower_height) |y| {
-                for (world_size - 5..world_size) |z| {
-                    self.setBlockRaw(@intCast(x), @intCast(sea_y + @as(u8, @intCast(y))), @intCast(z), 1);
+                for (world_size_z - 5..world_size_z) |z| {
+                    const world_y: i32 = @as(i32, @intCast(y)) + 1;
+                    const internal_y: i32 = world_y - self.vertical_scroll + sea_internal;
+                    if (internal_y >= 0 and internal_y < @as(i32, @intCast(world_size_y))) {
+                        self.setBlockRaw(@intCast(x), @intCast(internal_y), @intCast(z), 1);
+                    }
                 }
             }
         }
 
         // Central pyramid
         const pyramid_base = 30;
-        const pyramid_x = world_size / 2 - pyramid_base / 2;
-        const pyramid_z = world_size / 2 - pyramid_base / 2;
+        const pyramid_x = world_size_x / 2 - pyramid_base / 2;
+        const pyramid_z = world_size_z / 2 - pyramid_base / 2;
 
         for (0..pyramid_base) |layer| {
             const size = pyramid_base - layer;
@@ -760,8 +885,12 @@ pub const World = struct {
                 for (0..size) |dz| {
                     const x = pyramid_x + offset + dx;
                     const z = pyramid_z + offset + dz;
-                    if (x < world_size and z < world_size) {
-                        self.setBlockRaw(@intCast(x), @intCast(sea_y + @as(u8, @intCast(layer + 1))), @intCast(z), 1);
+                    if (x < world_size_x and z < world_size_z) {
+                        const world_y: i32 = @as(i32, @intCast(layer)) + 1;
+                        const internal_y: i32 = world_y - self.vertical_scroll + sea_internal;
+                        if (internal_y >= 0 and internal_y < @as(i32, @intCast(world_size_y))) {
+                            self.setBlockRaw(@intCast(x), @intCast(internal_y), @intCast(z), 1);
+                        }
                     }
                 }
             }
@@ -769,19 +898,5 @@ pub const World = struct {
 
         // Everything was written raw; force all chunks to regenerate meshes.
         self.markAllChunksDirty();
-
-        // Generate initial meshes for all dirty chunks
-        for (0..WORLD_SIZE_CHUNKS) |cx| {
-            for (0..WORLD_SIZE_CHUNKS) |cy| {
-                for (0..WORLD_SIZE_CHUNKS) |cz| {
-                    const chunk_idx = chunkToIndex(cx, cy, cz);
-                    if (self.chunks[chunk_idx].dirty) {
-                        self.generateChunkMesh(cx, cy, cz) catch |err| {
-                            std.debug.print("Initial mesh gen error at ({},{},{}): {}\n", .{ cx, cy, cz, err });
-                        };
-                    }
-                }
-            }
-        }
     }
 };

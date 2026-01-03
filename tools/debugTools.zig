@@ -40,8 +40,11 @@ pub fn draw(
     visible_blocks_drawn: i32,
     solid_blocks_drawn: i32,
     total_blocks_in_memory: i32,
+    vertical_scroll: i32,
     chunks_drawn: i32,
     chunks_regenerated: i32,
+    chunks_considered: i32,
+    chunks_culled: i32,
 ) void {
     if (!debugMenu.state) return;
 
@@ -62,8 +65,11 @@ pub fn draw(
     var blocks_buf: [64]u8 = undefined;
     var solid_buf: [64]u8 = undefined;
     var mem_blocks_buf: [64]u8 = undefined;
+    var scroll_buf: [64]u8 = undefined;
     var chunks_buf: [64]u8 = undefined;
     var regen_buf: [64]u8 = undefined;
+    var considered_buf: [64]u8 = undefined;
+    var culled_buf: [64]u8 = undefined;
 
     const fps_str = std.fmt.bufPrintZ(&fps_buf, "FPS: {d}", .{fps}) catch "FPS: Error";
     const ft_str = std.fmt.bufPrintZ(&ft_buf, "Frame Time: {d:.2}ms", .{frame_time * 1000.0}) catch "Frame Time: Error";
@@ -71,8 +77,11 @@ pub fn draw(
     const blocks_str = std.fmt.bufPrintZ(&blocks_buf, "Blocks (visible): {d}", .{visible_blocks_drawn}) catch "Blocks: Error";
     const solid_str = std.fmt.bufPrintZ(&solid_buf, "Blocks (solid): {d}", .{solid_blocks_drawn}) catch "Solid: Error";
     const mem_blocks_str = std.fmt.bufPrintZ(&mem_blocks_buf, "Blocks (memory): {d}", .{total_blocks_in_memory}) catch "Memory: Error";
+    const scroll_str = std.fmt.bufPrintZ(&scroll_buf, "Vertical scroll: {d}", .{vertical_scroll}) catch "Scroll: Error";
     const chunks_str = std.fmt.bufPrintZ(&chunks_buf, "Chunks drawn: {d}", .{chunks_drawn}) catch "Chunks: Error";
     const regen_str = std.fmt.bufPrintZ(&regen_buf, "Chunks regen: {d}", .{chunks_regenerated}) catch "Regen: Error";
+    const considered_str = std.fmt.bufPrintZ(&considered_buf, "Chunks considered: {d}", .{chunks_considered}) catch "Considered: Error";
+    const culled_str = std.fmt.bufPrintZ(&culled_buf, "Chunks culled: {d}", .{chunks_culled}) catch "Culled: Error";
 
     const gpu_info = getGPUInfo();
 
@@ -83,12 +92,15 @@ pub fn draw(
     const line5 = blocks_str;
     const line6 = solid_str;
     const line7 = mem_blocks_str;
-    const line8 = chunks_str;
-    const line9 = regen_str;
-    const line10 = gpu_info.vendor;
-    const line11 = gpu_info.renderer;
-    const line12 = "====================";
-    const line13 = "[F2] Toggle menu";
+    const line8 = scroll_str;
+    const line9 = chunks_str;
+    const line10 = regen_str;
+    const line11 = considered_str;
+    const line12 = culled_str;
+    const line13 = gpu_info.vendor;
+    const line14 = gpu_info.renderer;
+    const line15 = "====================";
+    const line16 = "[F2] Toggle menu";
 
     // Measure text widths
     const w1: i32 = rl.measureText(line1, font_size);
@@ -104,6 +116,9 @@ pub fn draw(
     const w11: i32 = rl.measureText(line11, font_size);
     const w12: i32 = rl.measureText(line12, font_size);
     const w13: i32 = rl.measureText(line13, font_size);
+    const w14: i32 = rl.measureText(line14, font_size);
+    const w15: i32 = rl.measureText(line15, font_size);
+    const w16: i32 = rl.measureText(line16, font_size);
 
     var max_w: i32 = w1;
     if (w2 > max_w) max_w = w2;
@@ -118,9 +133,12 @@ pub fn draw(
     if (w11 > max_w) max_w = w11;
     if (w12 > max_w) max_w = w12;
     if (w13 > max_w) max_w = w13;
+    if (w14 > max_w) max_w = w14;
+    if (w15 > max_w) max_w = w15;
+    if (w16 > max_w) max_w = w16;
 
     const box_w: i32 = max_w + padding * 2;
-    const box_h: i32 = (line_height * 13) + padding * 2;
+    const box_h: i32 = (line_height * 16) + padding * 2;
 
     // Draw background and border
     rl.drawRectangle(x, y, box_w, box_h, rl.Color{ .r = 0, .g = 0, .b = 0, .a = 180 });
@@ -152,5 +170,11 @@ pub fn draw(
     current_y += line_height;
     rl.drawText(line12, x + padding, current_y, font_size, rl.Color.ray_white);
     current_y += line_height;
-    rl.drawText(line13, x + padding, current_y, font_size, rl.Color.gray);
+    rl.drawText(line13, x + padding, current_y, font_size, rl.Color.yellow);
+    current_y += line_height;
+    rl.drawText(line14, x + padding, current_y, font_size, rl.Color.yellow);
+    current_y += line_height;
+    rl.drawText(line15, x + padding, current_y, font_size, rl.Color.ray_white);
+    current_y += line_height;
+    rl.drawText(line16, x + padding, current_y, font_size, rl.Color.gray);
 }

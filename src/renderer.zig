@@ -2,7 +2,9 @@ const std = @import("std");
 const raylib = @import("raylib");
 const root = @import("root.zig");
 
-const WORLD_SIZE_CHUNKS = root.WORLD_SIZE_CHUNKS;
+const WORLD_SIZE_CHUNKS_X = root.WORLD_SIZE_CHUNKS_X;
+const WORLD_SIZE_CHUNKS_Y = root.WORLD_SIZE_CHUNKS_Y;
+const WORLD_SIZE_CHUNKS_Z = root.WORLD_SIZE_CHUNKS_Z;
 
 // we are going to adjust grid size on the fly
 var userAdjustedMax_X: u32 = 100;
@@ -91,6 +93,10 @@ fn cross3(a: raylib.Vector3, b: raylib.Vector3) raylib.Vector3 {
     };
 }
 
+fn dot3(a: raylib.Vector3, b: raylib.Vector3) f32 {
+    return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
 fn normalize3(v: raylib.Vector3) raylib.Vector3 {
     const len = @sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
     if (len == 0) return v;
@@ -99,6 +105,17 @@ fn normalize3(v: raylib.Vector3) raylib.Vector3 {
 
 // Frustum culling
 const Frustum = struct {
+    // Camera basis + ortho extents
+    pos: raylib.Vector3,
+    right: raylib.Vector3,
+    up: raylib.Vector3,
+    forward: raylib.Vector3,
+    half_width: f32,
+    half_height: f32,
+    near_dist: f32,
+    far_dist: f32,
+
+    // Coarse world-space AABB of the frustum (used only to bound chunk iteration)
     aabb_min_x: f32,
     aabb_max_x: f32,
     aabb_min_y: f32,
@@ -107,7 +124,7 @@ const Frustum = struct {
     aabb_max_z: f32,
 };
 
-fn calculateOrthoFrustum(camera: raylib.Camera3D, screen_width: f32, screen_height: f32) Frustum {
+fn calculateOrthoFrustum(camera: raylib.Camera3D, screen_width: f32, screen_height: f32, world_min: raylib.Vector3, world_max: raylib.Vector3) Frustum {
     const aspect = screen_width / screen_height;
     const half_height = camera.fovy / 2.0;
     const half_width = half_height * aspect;
@@ -118,8 +135,30 @@ fn calculateOrthoFrustum(camera: raylib.Camera3D, screen_width: f32, screen_heig
     const up = normalize3(cross3(right, forward));
 
     // Near/far distances
-    const near_dist: f32 = 0.01;
-    const far_dist: f32 = 1000.0;
+    // For orthographic cameras, the frustum is a box extruded along `forward`.
+    // If far is too large, the computed world-space AABB becomes huge (because
+    // forward has x/z components), defeating chunk range culling.
+    // Clamp near/far to the current world bounds projected onto the forward axis.
+    var min_d: f32 = std.math.inf(f32);
+    var max_d: f32 = -std.math.inf(f32);
+    const corners = [_]raylib.Vector3{
+        .{ .x = world_min.x, .y = world_min.y, .z = world_min.z },
+        .{ .x = world_min.x, .y = world_min.y, .z = world_max.z },
+        .{ .x = world_min.x, .y = world_max.y, .z = world_min.z },
+        .{ .x = world_min.x, .y = world_max.y, .z = world_max.z },
+        .{ .x = world_max.x, .y = world_min.y, .z = world_min.z },
+        .{ .x = world_max.x, .y = world_min.y, .z = world_max.z },
+        .{ .x = world_max.x, .y = world_max.y, .z = world_min.z },
+        .{ .x = world_max.x, .y = world_max.y, .z = world_max.z },
+    };
+    for (corners) |c| {
+        const d = dot3(forward, sub3(c, camera.position));
+        min_d = @min(min_d, d);
+        max_d = @max(max_d, d);
+    }
+
+    const near_dist: f32 = @max(0.01, min_d);
+    const far_dist: f32 = @max(near_dist + 0.01, max_d);
 
     const center_near = add3(camera.position, scale3(forward, near_dist));
     const center_far = add3(camera.position, scale3(forward, far_dist));
@@ -153,6 +192,14 @@ fn calculateOrthoFrustum(camera: raylib.Camera3D, screen_width: f32, screen_heig
     }
 
     return Frustum{
+        .pos = camera.position,
+        .right = right,
+        .up = up,
+        .forward = forward,
+        .half_width = half_width,
+        .half_height = half_height,
+        .near_dist = near_dist,
+        .far_dist = far_dist,
         .aabb_min_x = min_x,
         .aabb_max_x = max_x,
         .aabb_min_y = min_y,
@@ -171,10 +218,34 @@ fn isBlockInFrustum(frustum: Frustum, x: f32, y: f32, z: f32) bool {
 }
 
 fn isChunkInFrustum(frustum: Frustum, min: raylib.Vector3, max: raylib.Vector3) bool {
-    // AABB vs AABB intersection test
-    if (max.x < frustum.aabb_min_x or min.x > frustum.aabb_max_x) return false;
-    if (max.y < frustum.aabb_min_y or min.y > frustum.aabb_max_y) return false;
-    if (max.z < frustum.aabb_min_z or min.z > frustum.aabb_max_z) return false;
+    // Tight orthographic frustum test in camera space.
+    // Transform AABB to camera axes using center/extents projection.
+    const center = raylib.Vector3{
+        .x = (min.x + max.x) * 0.5,
+        .y = (min.y + max.y) * 0.5,
+        .z = (min.z + max.z) * 0.5,
+    };
+    const ext = raylib.Vector3{
+        .x = (max.x - min.x) * 0.5,
+        .y = (max.y - min.y) * 0.5,
+        .z = (max.z - min.z) * 0.5,
+    };
+
+    const rel = sub3(center, frustum.pos);
+
+    const rx = ext.x * @abs(frustum.right.x) + ext.y * @abs(frustum.right.y) + ext.z * @abs(frustum.right.z);
+    const ux = ext.x * @abs(frustum.up.x) + ext.y * @abs(frustum.up.y) + ext.z * @abs(frustum.up.z);
+    const fx = ext.x * @abs(frustum.forward.x) + ext.y * @abs(frustum.forward.y) + ext.z * @abs(frustum.forward.z);
+
+    const c_right = dot3(frustum.right, rel);
+    if (c_right + rx < -frustum.half_width or c_right - rx > frustum.half_width) return false;
+
+    const c_up = dot3(frustum.up, rel);
+    if (c_up + ux < -frustum.half_height or c_up - ux > frustum.half_height) return false;
+
+    const c_fwd = dot3(frustum.forward, rel);
+    if (c_fwd + fx < frustum.near_dist or c_fwd - fx > frustum.far_dist) return false;
+
     return true;
 }
 
@@ -201,6 +272,8 @@ pub const RenderStats = struct {
     triangles_drawn: i32,
     chunks_drawn: i32,
     chunks_regenerated: i32,
+    chunks_considered: i32,
+    chunks_culled: i32,
     visible_blocks_drawn: i32,
     solid_blocks_drawn: i32,
 };
@@ -211,6 +284,8 @@ pub const Renderer = struct {
 
     pub fn init() Renderer {
         const sea_y: f32 = @as(f32, @floatFromInt(root.World.seaLevelYIndexDefault()));
+        // Keep the original camera defaults the project started with.
+        // (Even if the world size grows, these defaults feel best for the current UX.)
         const orthoCameraTarget = raylib.Vector3{ .x = 52.0, .y = sea_y, .z = 52.0 };
         const orthoCameraPosition = raylib.Vector3{ .x = 80.0, .y = sea_y + 45.0, .z = 80.0 };
 
@@ -226,7 +301,7 @@ pub const Renderer = struct {
         };
     }
 
-    pub fn update(self: *Renderer) void {
+    pub fn update(self: *Renderer, wheel: f32) void {
         // Right mouse drag to pan camera
         if (raylib.isMouseButtonDown(raylib.MouseButton.right)) {
             const delta = raylib.getMouseDelta();
@@ -248,7 +323,6 @@ pub const Renderer = struct {
         }
 
         // Mouse wheel zoom (adjust orthographic scale)
-        const wheel = raylib.getMouseWheelMove();
         if (wheel != 0.0) {
             const zoom_speed: f32 = 2.0;
             self.ortho_camera.fovy -= wheel * zoom_speed;
@@ -268,15 +342,23 @@ pub const Renderer = struct {
         // Calculate frustum once per frame
         const screen_w: f32 = @floatFromInt(raylib.getScreenWidth());
         const screen_h: f32 = @floatFromInt(raylib.getScreenHeight());
-        const frustum = calculateOrthoFrustum(self.ortho_camera, screen_w, screen_h);
+        const world_wx: f32 = @floatFromInt(root.WORLD_SIZE_CHUNKS_X * root.CHUNK_SIZE);
+        const world_wy: f32 = @floatFromInt(root.WORLD_SIZE_CHUNKS_Y * root.CHUNK_SIZE);
+        const world_wz: f32 = @floatFromInt(root.WORLD_SIZE_CHUNKS_Z * root.CHUNK_SIZE);
+        const scroll_y: f32 = @floatFromInt(world.vertical_scroll);
+        const world_min = raylib.Vector3{ .x = 0.0, .y = scroll_y, .z = 0.0 };
+        const world_max = raylib.Vector3{ .x = world_wx, .y = scroll_y + world_wy, .z = world_wz };
+        const frustum = calculateOrthoFrustum(self.ortho_camera, screen_w, screen_h, world_min, world_max);
 
         var triangles_drawn: i32 = 0;
         var chunks_regenerated: i32 = 0;
         var chunks_drawn: i32 = 0;
+        var chunks_considered: i32 = 0;
+        var chunks_culled: i32 = 0;
         var visible_blocks_drawn: i32 = 0;
         var solid_blocks_drawn: i32 = 0;
 
-        const model_pos = raylib.Vector3{ .x = 0, .y = 0, .z = 0 };
+        const model_pos = raylib.Vector3{ .x = 0, .y = scroll_y, .z = 0 };
         const model_scale: f32 = 1.0;
         const mesh_tint = raylib.Color.ray_white;
 
@@ -284,17 +366,37 @@ pub const Renderer = struct {
         const RL_LINES: i32 = 0x0001;
         const grid_color = raylib.Color{ .r = 0, .g = 0, .b = 0, .a = 120 };
 
-        var drawn_chunk_indices: [WORLD_SIZE_CHUNKS * WORLD_SIZE_CHUNKS * WORLD_SIZE_CHUNKS]usize = undefined;
-        var drawn_chunk_count: usize = 0;
+        const chunk_size_f: f32 = @floatFromInt(root.CHUNK_SIZE);
+        const internal_y_min: f32 = frustum.aabb_min_y - scroll_y;
+        const internal_y_max: f32 = frustum.aabb_max_y - scroll_y;
+
+        const cx_min_i: i32 = @intFromFloat(@floor(frustum.aabb_min_x / chunk_size_f));
+        const cx_max_i: i32 = @intFromFloat(@floor(frustum.aabb_max_x / chunk_size_f));
+        const cy_min_i: i32 = @intFromFloat(@floor(internal_y_min / chunk_size_f));
+        const cy_max_i: i32 = @intFromFloat(@floor(internal_y_max / chunk_size_f));
+        const cz_min_i: i32 = @intFromFloat(@floor(frustum.aabb_min_z / chunk_size_f));
+        const cz_max_i: i32 = @intFromFloat(@floor(frustum.aabb_max_z / chunk_size_f));
+
+        const cx0: usize = @intCast(std.math.clamp(cx_min_i, 0, @as(i32, WORLD_SIZE_CHUNKS_X - 1)));
+        const cx1: usize = @intCast(std.math.clamp(cx_max_i, 0, @as(i32, WORLD_SIZE_CHUNKS_X - 1)));
+        const cy0: usize = @intCast(std.math.clamp(cy_min_i, 0, @as(i32, WORLD_SIZE_CHUNKS_Y - 1)));
+        const cy1: usize = @intCast(std.math.clamp(cy_max_i, 0, @as(i32, WORLD_SIZE_CHUNKS_Y - 1)));
+        const cz0: usize = @intCast(std.math.clamp(cz_min_i, 0, @as(i32, WORLD_SIZE_CHUNKS_Z - 1)));
+        const cz1: usize = @intCast(std.math.clamp(cz_max_i, 0, @as(i32, WORLD_SIZE_CHUNKS_Z - 1)));
 
         // Iterate chunks (not blocks!)
-        for (0..WORLD_SIZE_CHUNKS) |cx| {
-            for (0..WORLD_SIZE_CHUNKS) |cy| {
-                for (0..WORLD_SIZE_CHUNKS) |cz| {
+        var cx: usize = cx0;
+        while (cx <= cx1) : (cx += 1) {
+            var cy: usize = cy0;
+            while (cy <= cy1) : (cy += 1) {
+                var cz: usize = cz0;
+                while (cz <= cz1) : (cz += 1) {
                     const chunk_idx: usize =
-                        cz * WORLD_SIZE_CHUNKS * WORLD_SIZE_CHUNKS +
-                        cy * WORLD_SIZE_CHUNKS +
+                        cz * WORLD_SIZE_CHUNKS_X * WORLD_SIZE_CHUNKS_Y +
+                        cy * WORLD_SIZE_CHUNKS_X +
                         cx;
+
+                    chunks_considered += 1;
 
                     // Regenerate mesh if dirty
                     if (world.chunks[chunk_idx].dirty) {
@@ -306,20 +408,25 @@ pub const Renderer = struct {
                     }
 
                     const chunk_mesh = &world.chunk_meshes[chunk_idx];
-                    if (chunk_mesh.model == null) continue; // Empty chunk
+                    if (chunk_mesh.model == null) {
+                        chunks_culled += 1;
+                        continue;
+                    } // Empty chunk
 
                     // Chunk-level frustum culling
+                    const shifted_min = raylib.Vector3{ .x = chunk_mesh.world_min.x, .y = chunk_mesh.world_min.y + scroll_y, .z = chunk_mesh.world_min.z };
+                    const shifted_max = raylib.Vector3{ .x = chunk_mesh.world_max.x, .y = chunk_mesh.world_max.y + scroll_y, .z = chunk_mesh.world_max.z };
                     if (!isChunkInFrustum(
                         frustum,
-                        chunk_mesh.world_min,
-                        chunk_mesh.world_max,
-                    )) continue;
+                        shifted_min,
+                        shifted_max,
+                    )) {
+                        chunks_culled += 1;
+                        continue;
+                    }
 
                     // Draw cached model
                     raylib.drawModel(chunk_mesh.model.?, model_pos, model_scale, mesh_tint);
-
-                    drawn_chunk_indices[drawn_chunk_count] = chunk_idx;
-                    drawn_chunk_count += 1;
 
                     chunks_drawn += 1;
                     triangles_drawn += @intCast(chunk_mesh.triangle_count);
@@ -334,12 +441,30 @@ pub const Renderer = struct {
         rlgl.rlSetLineWidth(3.0);
         rlgl.rlBegin(RL_LINES);
         rlgl.rlColor4ub(grid_color.r, grid_color.g, grid_color.b, grid_color.a);
-        for (drawn_chunk_indices[0..drawn_chunk_count]) |idx| {
-            const chunk_mesh = &world.chunk_meshes[idx];
-            if (chunk_mesh.grid_line_vertices) |verts| {
-                var i: usize = 0;
-                while (i + 2 < verts.len) : (i += 3) {
-                    rlgl.rlVertex3f(verts[i], verts[i + 1], verts[i + 2]);
+        cx = cx0;
+        while (cx <= cx1) : (cx += 1) {
+            var cy2: usize = cy0;
+            while (cy2 <= cy1) : (cy2 += 1) {
+                var cz2: usize = cz0;
+                while (cz2 <= cz1) : (cz2 += 1) {
+                    const chunk_idx: usize =
+                        cz2 * WORLD_SIZE_CHUNKS_X * WORLD_SIZE_CHUNKS_Y +
+                        cy2 * WORLD_SIZE_CHUNKS_X +
+                        cx;
+
+                    const chunk_mesh = &world.chunk_meshes[chunk_idx];
+                    if (chunk_mesh.model == null) continue;
+
+                    const shifted_min = raylib.Vector3{ .x = chunk_mesh.world_min.x, .y = chunk_mesh.world_min.y + scroll_y, .z = chunk_mesh.world_min.z };
+                    const shifted_max = raylib.Vector3{ .x = chunk_mesh.world_max.x, .y = chunk_mesh.world_max.y + scroll_y, .z = chunk_mesh.world_max.z };
+                    if (!isChunkInFrustum(frustum, shifted_min, shifted_max)) continue;
+
+                    if (chunk_mesh.grid_line_vertices) |verts| {
+                        var i: usize = 0;
+                        while (i + 2 < verts.len) : (i += 3) {
+                            rlgl.rlVertex3f(verts[i], verts[i + 1] + scroll_y, verts[i + 2]);
+                        }
+                    }
                 }
             }
         }
@@ -358,7 +483,7 @@ pub const Renderer = struct {
 
         // Render worker if present
         if (world.worker) |w| {
-            const worker_pos = raylib.Vector3{ .x = w.x, .y = w.y, .z = w.z };
+            const worker_pos = raylib.Vector3{ .x = w.x, .y = w.y + scroll_y, .z = w.z };
             raylib.drawCube(worker_pos, 0.5, 0.8, 0.5, raylib.Color.red);
             raylib.drawCubeWires(worker_pos, 0.5, 0.8, 0.5, raylib.Color.maroon);
             triangles_drawn += 12; // 6 faces * 2 tris
@@ -368,6 +493,8 @@ pub const Renderer = struct {
             .triangles_drawn = triangles_drawn,
             .chunks_drawn = chunks_drawn,
             .chunks_regenerated = chunks_regenerated,
+            .chunks_considered = chunks_considered,
+            .chunks_culled = chunks_culled,
             .visible_blocks_drawn = visible_blocks_drawn,
             .solid_blocks_drawn = solid_blocks_drawn,
         };
