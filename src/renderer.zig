@@ -6,6 +6,198 @@ const WORLD_SIZE_CHUNKS_X = root.WORLD_SIZE_CHUNKS_X;
 const WORLD_SIZE_CHUNKS_Y = root.WORLD_SIZE_CHUNKS_Y;
 const WORLD_SIZE_CHUNKS_Z = root.WORLD_SIZE_CHUNKS_Z;
 
+/// Result of a raycast against the voxel world.
+pub const BlockHit = struct {
+    x: u16,
+    y: u16,
+    z: u16,
+    hit: bool,
+};
+
+/// Perform ray-voxel intersection using DDA algorithm.
+/// Returns the first solid block hit by the ray, or hit=false if none.
+pub fn raycastBlock(world: *const root.World, ray: raylib.Ray, max_distance: f32) BlockHit {
+    const pos = ray.position;
+    const dir = ray.direction;
+
+    // Current voxel coordinates
+    var voxel_x: i32 = @intFromFloat(@floor(pos.x));
+    var voxel_y: i32 = @intFromFloat(@floor(pos.y));
+    var voxel_z: i32 = @intFromFloat(@floor(pos.z));
+
+    // Step direction (+1 or -1 for each axis)
+    const step_x: i32 = if (dir.x >= 0) 1 else -1;
+    const step_y: i32 = if (dir.y >= 0) 1 else -1;
+    const step_z: i32 = if (dir.z >= 0) 1 else -1;
+
+    // Distance to next voxel boundary for each axis
+    const next_x: f32 = if (dir.x >= 0) @floor(pos.x) + 1.0 else @floor(pos.x);
+    const next_y: f32 = if (dir.y >= 0) @floor(pos.y) + 1.0 else @floor(pos.y);
+    const next_z: f32 = if (dir.z >= 0) @floor(pos.z) + 1.0 else @floor(pos.z);
+
+    // tMax: parameter t along ray to next boundary
+    var t_max_x: f32 = if (dir.x != 0) (next_x - pos.x) / dir.x else std.math.inf(f32);
+    var t_max_y: f32 = if (dir.y != 0) (next_y - pos.y) / dir.y else std.math.inf(f32);
+    var t_max_z: f32 = if (dir.z != 0) (next_z - pos.z) / dir.z else std.math.inf(f32);
+
+    // tDelta: distance along ray for one voxel step
+    const t_delta_x: f32 = if (dir.x != 0) @abs(1.0 / dir.x) else std.math.inf(f32);
+    const t_delta_y: f32 = if (dir.y != 0) @abs(1.0 / dir.y) else std.math.inf(f32);
+    const t_delta_z: f32 = if (dir.z != 0) @abs(1.0 / dir.z) else std.math.inf(f32);
+
+    var distance: f32 = 0;
+    const world_max_x = root.World.worldSizeBlocksX();
+    const world_max_y = root.World.worldSizeBlocksY();
+    const world_max_z = root.World.worldSizeBlocksZ();
+
+    while (distance < max_distance) {
+        // Check if current voxel is within bounds and solid
+        if (voxel_x >= 0 and voxel_y >= 0 and voxel_z >= 0 and
+            voxel_x < world_max_x and voxel_y < world_max_y and voxel_z < world_max_z)
+        {
+            if (world.isBlockSolid(@intCast(voxel_x), @intCast(voxel_y), @intCast(voxel_z))) {
+                return .{
+                    .x = @intCast(voxel_x),
+                    .y = @intCast(voxel_y),
+                    .z = @intCast(voxel_z),
+                    .hit = true,
+                };
+            }
+        }
+
+        // Step to next voxel (find which axis boundary is closest)
+        if (t_max_x < t_max_y) {
+            if (t_max_x < t_max_z) {
+                voxel_x += step_x;
+                distance = t_max_x;
+                t_max_x += t_delta_x;
+            } else {
+                voxel_z += step_z;
+                distance = t_max_z;
+                t_max_z += t_delta_z;
+            }
+        } else {
+            if (t_max_y < t_max_z) {
+                voxel_y += step_y;
+                distance = t_max_y;
+                t_max_y += t_delta_y;
+            } else {
+                voxel_z += step_z;
+                distance = t_max_z;
+                t_max_z += t_delta_z;
+            }
+        }
+    }
+
+    return .{ .x = 0, .y = 0, .z = 0, .hit = false };
+}
+
+fn intersectRayYPlane(ray: raylib.Ray, plane_y: f32) ?raylib.Vector3 {
+    const denom = ray.direction.y;
+    if (@abs(denom) < 0.000001) return null;
+    const t = (plane_y - ray.position.y) / denom;
+    return .{
+        .x = ray.position.x + ray.direction.x * t,
+        .y = plane_y,
+        .z = ray.position.z + ray.direction.z * t,
+    };
+}
+
+fn worldRectFromScreenDrag(start: raylib.Vector2, end: raylib.Vector2, camera: raylib.Camera3D, plane_y: f32) ?[4]raylib.Vector3 {
+    const r0 = raylib.getScreenToWorldRay(start, camera);
+    const r1 = raylib.getScreenToWorldRay(end, camera);
+
+    const a = intersectRayYPlane(r0, plane_y) orelse return null;
+    const b = intersectRayYPlane(r1, plane_y) orelse return null;
+
+    const min_x = @min(a.x, b.x);
+    const max_x = @max(a.x, b.x);
+    const min_z = @min(a.z, b.z);
+    const max_z = @max(a.z, b.z);
+
+    return .{
+        .{ .x = min_x, .y = plane_y, .z = min_z },
+        .{ .x = max_x, .y = plane_y, .z = min_z },
+        .{ .x = max_x, .y = plane_y, .z = max_z },
+        .{ .x = min_x, .y = plane_y, .z = max_z },
+    };
+}
+
+/// Draw the drag selection as a WORLD-ALIGNED rectangle (axis-aligned in X/Z),
+/// projected into screen space as a parallelogram for the current camera.
+pub fn drawSelectionRect(start: raylib.Vector2, end: raylib.Vector2, camera: raylib.Camera3D) void {
+    // Use camera target Y as the reference plane for defining the selection area.
+    // (This is just to derive X/Z extents; selection itself is still via raycast.)
+    const plane_y: f32 = camera.target.y;
+
+    const rect = worldRectFromScreenDrag(start, end, camera, plane_y) orelse return;
+    const p1w = rect[0];
+    const p2w = rect[1];
+    const p3w = rect[2];
+    const p4w = rect[3];
+
+    // Project world corners to screen and draw as a 2D parallelogram.
+    const p1 = raylib.getWorldToScreen(p1w, camera);
+    const p2 = raylib.getWorldToScreen(p2w, camera);
+    const p3 = raylib.getWorldToScreen(p3w, camera);
+    const p4 = raylib.getWorldToScreen(p4w, camera);
+
+    const fill_color = raylib.Color{ .r = 0, .g = 220, .b = 220, .a = 40 };
+    const border_color = raylib.Color{ .r = 0, .g = 220, .b = 220, .a = 200 };
+
+    raylib.drawTriangle(p1, p2, p3, fill_color);
+    raylib.drawTriangle(p1, p3, p4, fill_color);
+
+    raylib.drawLineV(p1, p2, border_color);
+    raylib.drawLineV(p2, p3, border_color);
+    raylib.drawLineV(p3, p4, border_color);
+    raylib.drawLineV(p4, p1, border_color);
+}
+
+/// Select all visible surface blocks within the skewed parallelogram via raycasting.
+pub fn dragSelectBlocks(
+    world: *root.World,
+    start: raylib.Vector2,
+    end: raylib.Vector2,
+    camera: raylib.Camera3D,
+) void {
+    const plane_y: f32 = camera.target.y;
+    const rect = worldRectFromScreenDrag(start, end, camera, plane_y) orelse return;
+
+    const min_xw = @min(rect[0].x, rect[2].x);
+    const max_xw = @max(rect[0].x, rect[2].x);
+    const min_zw = @min(rect[0].z, rect[2].z);
+    const max_zw = @max(rect[0].z, rect[2].z);
+
+    // Iterate over whole block columns inside the world-aligned rectangle.
+    // For each x/z cell center, project to screen and raycast: this selects the visible surface.
+    const world_max_x: i32 = root.World.worldSizeBlocksX();
+    const world_max_z: i32 = root.World.worldSizeBlocksZ();
+
+    const x0: i32 = std.math.clamp(@as(i32, @intFromFloat(@floor(min_xw))), 0, world_max_x - 1);
+    const x1: i32 = std.math.clamp(@as(i32, @intFromFloat(@floor(max_xw))), 0, world_max_x - 1);
+    const z0: i32 = std.math.clamp(@as(i32, @intFromFloat(@floor(min_zw))), 0, world_max_z - 1);
+    const z1: i32 = std.math.clamp(@as(i32, @intFromFloat(@floor(max_zw))), 0, world_max_z - 1);
+
+    var x: i32 = @min(x0, x1);
+    while (x <= @max(x0, x1)) : (x += 1) {
+        var z: i32 = @min(z0, z1);
+        while (z <= @max(z0, z1)) : (z += 1) {
+            const wp = raylib.Vector3{
+                .x = @as(f32, @floatFromInt(x)) + 0.5,
+                .y = plane_y,
+                .z = @as(f32, @floatFromInt(z)) + 0.5,
+            };
+            const sp = raylib.getWorldToScreen(wp, camera);
+            const ray = raylib.getScreenToWorldRay(sp, camera);
+            const hit = raycastBlock(world, ray, 500.0);
+            if (hit.hit) {
+                world.addToSelection(hit.x, hit.y, hit.z);
+            }
+        }
+    }
+}
+
 // we are going to adjust grid size on the fly
 var userAdjustedMax_X: u32 = 100;
 var userAdjustedMax_Y: u32 = 100;

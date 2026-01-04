@@ -58,6 +58,10 @@ pub fn run() !void {
     const slice_repeat_delay: f32 = 0.25;
     const slice_repeat_rate: f32 = 0.05; // seconds per step after delay
 
+    // Drag-select state
+    var drag_start: ?raylib.Vector2 = null;
+    var is_dragging: bool = false;
+
     while (!raylib.windowShouldClose()) {
         // Input handling
         if (raylib.isKeyPressed(raylib.KeyboardKey.f2)) {
@@ -111,6 +115,52 @@ pub fn run() !void {
             world.adjustTopRenderLevel(delta_level);
         }
 
+        // Left mouse button pressed - start potential drag
+        if (raylib.isMouseButtonPressed(raylib.MouseButton.left)) {
+            drag_start = raylib.getMousePosition();
+            is_dragging = false;
+        }
+
+        // Left mouse button held - check if dragging
+        if (raylib.isMouseButtonDown(raylib.MouseButton.left)) {
+            if (drag_start) |start| {
+                const current = raylib.getMousePosition();
+                const dx = @abs(current.x - start.x);
+                const dy = @abs(current.y - start.y);
+                // Consider it a drag if moved more than 5 pixels
+                if (dx > 5 or dy > 5) {
+                    is_dragging = true;
+                }
+            }
+        }
+
+        // Left mouse button released
+        if (raylib.isMouseButtonReleased(raylib.MouseButton.left)) {
+            if (is_dragging) {
+                if (drag_start) |start| {
+                    const end = raylib.getMousePosition();
+
+                    // Perform drag-select
+                    Goblinoria.dragSelectBlocks(world, start, end, renderer.ortho_camera);
+                }
+            } else if (drag_start != null) {
+                // Single click - toggle individual block
+                const mouse_pos = raylib.getMousePosition();
+                const ray = raylib.getScreenToWorldRay(mouse_pos, renderer.ortho_camera);
+                const hit = Goblinoria.raycastBlock(world, ray, 500.0);
+                if (hit.hit) {
+                    world.addToSelection(hit.x, hit.y, hit.z);
+                }
+            }
+            drag_start = null;
+            is_dragging = false;
+        }
+
+        // Escape to clear selection
+        if (raylib.isKeyPressed(raylib.KeyboardKey.escape)) {
+            world.clearSelection();
+        }
+
         // Camera update
         renderer.update(wheel_for_camera);
 
@@ -137,6 +187,13 @@ pub fn run() !void {
             render_stats.chunks_considered,
             render_stats.chunks_culled,
         );
+
+        // Draw selection rectangle while dragging
+        if (is_dragging) {
+            if (drag_start) |start| {
+                Goblinoria.drawSelectionRect(start, raylib.getMousePosition(), renderer.ortho_camera);
+            }
+        }
 
         raylib.endDrawing();
     }

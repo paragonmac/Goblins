@@ -3,6 +3,13 @@
 const std = @import("std");
 const raylib = @import("raylib");
 const BlockType = u8;
+
+pub const BlockCoord = struct {
+    x: u16,
+    y: u16,
+    z: u16,
+};
+
 pub const WORLD_SIZE_CHUNKS_BASE = 13;
 pub const WORLD_TILES_X = 5; // current cube + 4 more (option A)
 pub const WORLD_TILES_Z = 5; // current cube + 4 more (option A)
@@ -18,7 +25,12 @@ const MATERIAL_ID_MAX: BlockType = 9;
 const MATERIAL_ID_COUNT: u8 = 9;
 const WORLDGEN_SEED: u64 = 0x9E37_79B9_7F4A_7C15; // fixed seed for deterministic worldgen
 
-pub const Renderer = @import("renderer.zig").Renderer;
+const renderer = @import("renderer.zig");
+pub const Renderer = renderer.Renderer;
+pub const raycastBlock = renderer.raycastBlock;
+pub const BlockHit = renderer.BlockHit;
+pub const drawSelectionRect = renderer.drawSelectionRect;
+pub const dragSelectBlocks = renderer.dragSelectBlocks;
 
 const Chunk = struct {
     blocks: [CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE]BlockType,
@@ -73,6 +85,8 @@ pub const World = struct {
     /// World-space vertical offset in blocks for the current in-memory window.
     /// Displayed level = (internal_y - sea_level_y_index) + vertical_scroll.
     vertical_scroll: i32,
+    /// Set of currently selected block coordinates.
+    selected_blocks: std.AutoHashMap(BlockCoord, void),
 
     pub fn worldSizeBlocksX() i16 {
         return @intCast(WORLD_SIZE_CHUNKS_X * CHUNK_SIZE);
@@ -200,6 +214,7 @@ pub const World = struct {
         world.sea_level_y_index = seaLevelYIndexDefault();
         world.top_render_y_index = world.sea_level_y_index;
         world.vertical_scroll = 0;
+        world.selected_blocks = std.AutoHashMap(BlockCoord, void).init(allocator);
 
         // Initialize worker on top of the debug cube
         world.worker = Worker{ .x = 4.0, .y = @as(f32, @floatFromInt(world.sea_level_y_index)) + 9.5, .z = 4.0 };
@@ -211,8 +226,59 @@ pub const World = struct {
         for (&self.chunk_meshes) |*cm| {
             cm.deinit(allocator);
         }
+        self.selected_blocks.deinit();
         allocator.destroy(self);
     }
+
+    /// Check if a block at the given coordinates is selected.
+    pub fn isBlockSelected(self: *const World, x: u16, y: u16, z: u16) bool {
+        const key = BlockCoord{ .x = x, .y = y, .z = z };
+        return self.selected_blocks.contains(key);
+    }
+
+    /// Toggle selection state for a block. Marks the containing chunk dirty.
+    pub fn toggleBlockSelection(self: *World, x: u16, y: u16, z: u16) void {
+        const coord = BlockCoord{ .x = x, .y = y, .z = z };
+        if (self.selected_blocks.contains(coord)) {
+            _ = self.selected_blocks.remove(coord);
+        } else {
+            self.selected_blocks.put(coord, {}) catch {};
+        }
+        // Mark the containing chunk as dirty for re-meshing
+        const chunk_x: usize = @intCast(x / CHUNK_SIZE);
+        const chunk_y: usize = @intCast(y / CHUNK_SIZE);
+        const chunk_z: usize = @intCast(z / CHUNK_SIZE);
+        const idx = chunkToIndex(chunk_x, chunk_y, chunk_z);
+        self.chunks[idx].dirty = true;
+    }
+
+    /// Clear all selections, marking affected chunks as dirty.
+    pub fn clearSelection(self: *World) void {
+        var it = self.selected_blocks.keyIterator();
+        while (it.next()) |coord| {
+            const chunk_x: usize = @intCast(coord.x / CHUNK_SIZE);
+            const chunk_y: usize = @intCast(coord.y / CHUNK_SIZE);
+            const chunk_z: usize = @intCast(coord.z / CHUNK_SIZE);
+            const idx = chunkToIndex(chunk_x, chunk_y, chunk_z);
+            self.chunks[idx].dirty = true;
+        }
+        self.selected_blocks.clearRetainingCapacity();
+    }
+
+    /// Add a block to selection without toggling. Marks chunk dirty if newly selected.
+    pub fn addToSelection(self: *World, x: u16, y: u16, z: u16) void {
+        const coord = BlockCoord{ .x = x, .y = y, .z = z };
+        const was_new = self.selected_blocks.fetchPut(coord, {}) catch return;
+        if (was_new == null) {
+            // Only mark dirty if this was a new addition
+            const chunk_x: usize = @intCast(x / CHUNK_SIZE);
+            const chunk_y: usize = @intCast(y / CHUNK_SIZE);
+            const chunk_z: usize = @intCast(z / CHUNK_SIZE);
+            const idx = chunkToIndex(chunk_x, chunk_y, chunk_z);
+            self.chunks[idx].dirty = true;
+        }
+    }
+
     pub fn getBlock(self: *const World, x: u16, y: u16, z: u16) BlockType {
         const chunk_x: usize = @intCast(x / CHUNK_SIZE);
         const chunk_y: usize = @intCast(y / CHUNK_SIZE);
@@ -388,6 +454,7 @@ pub const World = struct {
             v3: raylib.Vector3,
             v4: raylib.Vector3,
             normal: raylib.Vector3,
+            is_selected: bool,
         ) !void {
             // Triangle 1: v1, v2, v3
             try self.vertices.appendSlice(self.allocator, &[_]f32{ v1.x, v1.y, v1.z });
@@ -409,8 +476,12 @@ pub const World = struct {
             }
 
             const mid = clampMaterialId(material_id);
-            const base = material_palette[@as(usize, @intCast(mid))];
-            const shaded = shadeColor(base, faceShade(normal));
+            const base_color = if (is_selected)
+                // Cyan/teal for selected blocks
+                ColorRGB{ .r = 0, .g = 220, .b = 220 }
+            else
+                material_palette[@as(usize, @intCast(mid))];
+            const shaded = shadeColor(base_color, faceShade(normal));
 
             // Add color for all 6 vertices (RGBA format)
             for (0..6) |_| {
@@ -507,6 +578,7 @@ pub const World = struct {
                     const xi: i16 = @intCast(wx);
                     const zi: i16 = @intCast(wz);
 
+                    const is_selected = self.isBlockSelected(wx, wy, wz);
                     var emitted_any_face = false;
 
                     // Grid line positions are generated in fixed-point (1/100 units)
@@ -540,6 +612,7 @@ pub const World = struct {
                             v3,
                             v4,
                             .{ .x = 0, .y = 1, .z = 0 },
+                            is_selected,
                         );
                     }
 
@@ -564,6 +637,7 @@ pub const World = struct {
                             v3,
                             v4,
                             .{ .x = 0, .y = -1, .z = 0 },
+                            is_selected,
                         );
                     }
 
@@ -588,6 +662,7 @@ pub const World = struct {
                             v3,
                             v4,
                             .{ .x = 0, .y = 0, .z = 1 },
+                            is_selected,
                         );
                     }
 
@@ -612,6 +687,7 @@ pub const World = struct {
                             v3,
                             v4,
                             .{ .x = 0, .y = 0, .z = -1 },
+                            is_selected,
                         );
                     }
 
@@ -636,6 +712,7 @@ pub const World = struct {
                             v3,
                             v4,
                             .{ .x = 1, .y = 0, .z = 0 },
+                            is_selected,
                         );
                     }
 
@@ -660,6 +737,7 @@ pub const World = struct {
                             v3,
                             v4,
                             .{ .x = -1, .y = 0, .z = 0 },
+                            is_selected,
                         );
                     }
 
