@@ -319,6 +319,23 @@ pub const Renderer = struct {
             triangles_drawn += 12; // 6 faces * 2 tris
         }
 
+        // Live drag preview highlight (does not rebuild meshes).
+        const WorldT = @TypeOf(world.*);
+        if (@hasField(WorldT, "preview_blocks")) {
+            const preview_fill = raylib.Color{ .r = 0, .g = 255, .b = 0, .a = 255 };
+            const preview_wire = raylib.Color{ .r = 0, .g = 255, .b = 0, .a = 255 };
+            var it = world.preview_blocks.keyIterator();
+            while (it.next()) |coord| {
+                const pos = raylib.Vector3{
+                    .x = @as(f32, @floatFromInt(coord.x)) + 0.5,
+                    .y = @as(f32, @floatFromInt(coord.y)) + 0.5 + scroll_y,
+                    .z = @as(f32, @floatFromInt(coord.z)) + 0.5,
+                };
+                raylib.drawCube(pos, 1.0, 1.0, 1.0, preview_fill);
+                raylib.drawCubeWires(pos, 1.02, 1.02, 1.02, preview_wire);
+            }
+        }
+
         return .{
             .triangles_drawn = triangles_drawn,
             .chunks_drawn = chunks_drawn,

@@ -18,8 +18,15 @@ pub const BlockHit = struct {
 pub fn raycastBlock(world: anytype, ray: raylib.Ray, max_distance: f32) BlockHit {
     const WorldT = @TypeOf(world.*);
 
-    const pos = ray.position;
+    var pos = ray.position;
     const dir = ray.direction;
+
+    // The world is rendered with a vertical offset (`vertical_scroll`) applied.
+    // Raylib's screen->world ray is in that rendered coordinate space, but our
+    // voxel data (and isBlockSolid) are in internal coordinates.
+    if (@hasField(WorldT, "vertical_scroll")) {
+        pos.y -= @as(f32, @floatFromInt(world.vertical_scroll));
+    }
 
     var voxel_x: i32 = @intFromFloat(@floor(pos.x));
     var voxel_y: i32 = @intFromFloat(@floor(pos.y));
@@ -50,7 +57,15 @@ pub fn raycastBlock(world: anytype, ray: raylib.Ray, max_distance: f32) BlockHit
         if (voxel_x >= 0 and voxel_y >= 0 and voxel_z >= 0 and
             voxel_x < world_max_x and voxel_y < world_max_y and voxel_z < world_max_z)
         {
-            if (world.isBlockSolid(@intCast(voxel_x), @intCast(voxel_y), @intCast(voxel_z))) {
+            // Only allow hits on blocks that are actually visible in the current slice.
+            // Meshing treats blocks above top_render_y_index as air; selection should match.
+            if (@hasField(WorldT, "top_render_y_index")) {
+                if (voxel_y > @as(i32, world.top_render_y_index)) {
+                    // Keep stepping.
+                } else if (world.isBlockSolid(@intCast(voxel_x), @intCast(voxel_y), @intCast(voxel_z))) {
+                    return .{ .x = @intCast(voxel_x), .y = @intCast(voxel_y), .z = @intCast(voxel_z), .hit = true };
+                }
+            } else if (world.isBlockSolid(@intCast(voxel_x), @intCast(voxel_y), @intCast(voxel_z))) {
                 return .{ .x = @intCast(voxel_x), .y = @intCast(voxel_y), .z = @intCast(voxel_z), .hit = true };
             }
         }

@@ -108,11 +108,15 @@ const MeshBuilder = struct {
 
         const mid = clampMaterialId(material_id);
         const base_color = if (is_selected)
-            // Cyan/teal for selected blocks
-            ColorRGB{ .r = 0, .g = 220, .b = 220 }
+            // Solid blue for selected blocks (green is reserved for drag preview)
+            ColorRGB{ .r = 0, .g = 150, .b = 155 }
         else
             material_palette[@as(usize, @intCast(mid))];
-        const shaded = shadeColor(base_color, faceShade(normal));
+
+        const shaded = if (is_selected)
+            base_color
+        else
+            shadeColor(base_color, faceShade(normal));
 
         // Add color for all 6 vertices (RGBA format)
         for (0..6) |_| {
