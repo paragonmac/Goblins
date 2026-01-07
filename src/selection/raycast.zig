@@ -28,6 +28,13 @@ pub fn raycastBlock(world: anytype, ray: raylib.Ray, max_distance: f32) BlockHit
         pos.y -= @as(f32, @floatFromInt(world.vertical_scroll));
     }
 
+    // World blocks are modeled as cubes centered on integer coordinates (see meshing: pos=(wx,wy,wz)
+    // with vertices at pos ± 0.5). That means voxel boundaries live at half-integers.
+    // Convert into a "cell space" where boundaries are integers by shifting by +0.5.
+    pos.x += 0.5;
+    pos.y += 0.5;
+    pos.z += 0.5;
+
     var voxel_x: i32 = @intFromFloat(@floor(pos.x));
     var voxel_y: i32 = @intFromFloat(@floor(pos.y));
     var voxel_z: i32 = @intFromFloat(@floor(pos.z));

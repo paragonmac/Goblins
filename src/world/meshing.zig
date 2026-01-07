@@ -144,6 +144,8 @@ pub fn generateChunkMesh(
 
     var visible_blocks_in_chunk: u32 = 0;
     var solid_blocks_in_chunk: u32 = 0;
+    // Index order: +Y, -Y, +Z, -Z, +X, -X.
+    var triangles_by_face: [6]u32 = [_]u32{0} ** 6;
 
     const EdgeKey = struct {
         ax: i32,
@@ -229,6 +231,7 @@ pub fn generateChunkMesh(
                 // Top face (+Y)
                 if (!isBlockSolidForMeshing(world, xi, yi + 1, zi)) {
                     emitted_any_face = true;
+                    triangles_by_face[0] += 2;
                     const v1 = raylib.Vector3{ .x = pos.x - h, .y = pos.y + h, .z = pos.z - h };
                     const v2 = raylib.Vector3{ .x = pos.x - h, .y = pos.y + h, .z = pos.z + h };
                     const v3 = raylib.Vector3{ .x = pos.x + h, .y = pos.y + h, .z = pos.z + h };
@@ -254,6 +257,7 @@ pub fn generateChunkMesh(
                 // Bottom face (-Y)
                 if (!isBlockSolidForMeshing(world, xi, yi - 1, zi)) {
                     emitted_any_face = true;
+                    triangles_by_face[1] += 2;
                     const v1 = raylib.Vector3{ .x = pos.x - h, .y = pos.y - h, .z = pos.z - h };
                     const v2 = raylib.Vector3{ .x = pos.x + h, .y = pos.y - h, .z = pos.z - h };
                     const v3 = raylib.Vector3{ .x = pos.x + h, .y = pos.y - h, .z = pos.z + h };
@@ -279,6 +283,7 @@ pub fn generateChunkMesh(
                 // Front face (+Z)
                 if (!isBlockSolidForMeshing(world, xi, yi, zi + 1)) {
                     emitted_any_face = true;
+                    triangles_by_face[2] += 2;
                     const v1 = raylib.Vector3{ .x = pos.x - h, .y = pos.y - h, .z = pos.z + h };
                     const v2 = raylib.Vector3{ .x = pos.x + h, .y = pos.y - h, .z = pos.z + h };
                     const v3 = raylib.Vector3{ .x = pos.x + h, .y = pos.y + h, .z = pos.z + h };
@@ -304,6 +309,7 @@ pub fn generateChunkMesh(
                 // Back face (-Z)
                 if (!isBlockSolidForMeshing(world, xi, yi, zi - 1)) {
                     emitted_any_face = true;
+                    triangles_by_face[3] += 2;
                     const v1 = raylib.Vector3{ .x = pos.x - h, .y = pos.y - h, .z = pos.z - h };
                     const v2 = raylib.Vector3{ .x = pos.x - h, .y = pos.y + h, .z = pos.z - h };
                     const v3 = raylib.Vector3{ .x = pos.x + h, .y = pos.y + h, .z = pos.z - h };
@@ -329,6 +335,7 @@ pub fn generateChunkMesh(
                 // Right face (+X)
                 if (!isBlockSolidForMeshing(world, xi + 1, yi, zi)) {
                     emitted_any_face = true;
+                    triangles_by_face[4] += 2;
                     const v1 = raylib.Vector3{ .x = pos.x + h, .y = pos.y - h, .z = pos.z - h };
                     const v2 = raylib.Vector3{ .x = pos.x + h, .y = pos.y + h, .z = pos.z - h };
                     const v3 = raylib.Vector3{ .x = pos.x + h, .y = pos.y + h, .z = pos.z + h };
@@ -354,6 +361,7 @@ pub fn generateChunkMesh(
                 // Left face (-X)
                 if (!isBlockSolidForMeshing(world, xi - 1, yi, zi)) {
                     emitted_any_face = true;
+                    triangles_by_face[5] += 2;
                     const v1 = raylib.Vector3{ .x = pos.x - h, .y = pos.y - h, .z = pos.z - h };
                     const v2 = raylib.Vector3{ .x = pos.x - h, .y = pos.y - h, .z = pos.z + h };
                     const v3 = raylib.Vector3{ .x = pos.x - h, .y = pos.y + h, .z = pos.z + h };
@@ -398,6 +406,7 @@ pub fn generateChunkMesh(
         world.chunk_meshes[chunk_index].grid_line_vertices = null;
 
         world.chunk_meshes[chunk_index].triangle_count = 0;
+        world.chunk_meshes[chunk_index].triangles_by_face = [_]u32{0} ** 6;
         world.chunk_meshes[chunk_index].visible_block_count = 0;
         world.chunk_meshes[chunk_index].solid_block_count = solid_blocks_in_chunk;
         world.chunks[chunk_index].dirty = false;
@@ -437,6 +446,7 @@ pub fn generateChunkMesh(
         }
         world.chunk_meshes[chunk_index].model = null;
         world.chunk_meshes[chunk_index].triangle_count = 0;
+        world.chunk_meshes[chunk_index].triangles_by_face = [_]u32{0} ** 6;
         world.chunk_meshes[chunk_index].visible_block_count = 0;
         world.chunk_meshes[chunk_index].solid_block_count = solid_blocks_in_chunk;
         world.chunks[chunk_index].dirty = false;
@@ -451,6 +461,7 @@ pub fn generateChunkMesh(
     // Store model and metadata
     world.chunk_meshes[chunk_index].model = model;
     world.chunk_meshes[chunk_index].triangle_count = @intCast(mesh.triangleCount);
+    world.chunk_meshes[chunk_index].triangles_by_face = triangles_by_face;
     world.chunk_meshes[chunk_index].visible_block_count = visible_blocks_in_chunk;
     world.chunk_meshes[chunk_index].solid_block_count = solid_blocks_in_chunk;
 

@@ -23,27 +23,31 @@ pub const Frustum = struct {
     aabb_max_z: f32,
 };
 
+/// Calculate an orthographic frustum for chunk culling.
+///
+/// `padding` expands the frustum box in all directions (world units).
+/// This prevents edge-case culling of chunks near the camera boundary.
 pub fn calculateOrthoFrustum(
     camera: raylib.Camera3D,
     screen_width: f32,
     screen_height: f32,
     world_min: raylib.Vector3,
     world_max: raylib.Vector3,
+    padding: f32,
 ) Frustum {
     const aspect = screen_width / screen_height;
-    const half_height = camera.fovy / 2.0;
-    const half_width = half_height * aspect;
+
+    // raylib orthographic: fovy is viewport *width* in world units (not an angle).
+    // Apply padding here so the frustum box is uniformly expanded.
+    const half_width = camera.fovy / 2.0 + padding;
+    const half_height = half_width / aspect;
 
     // Camera basis vectors
     const forward = v3.normalize(v3.sub(camera.target, camera.position));
     const right = v3.normalize(v3.cross(forward, camera.up));
     const up = v3.normalize(v3.cross(right, forward));
 
-    // Near/far distances
-    // For orthographic cameras, the frustum is a box extruded along `forward`.
-    // If far is too large, the computed world-space AABB becomes huge (because
-    // forward has x/z components), defeating chunk range culling.
-    // Clamp near/far to the current world bounds projected onto the forward axis.
+    // Project world AABB corners onto forward axis to get tight near/far.
     var min_d: f32 = std.math.inf(f32);
     var max_d: f32 = -std.math.inf(f32);
     const corners = [_]raylib.Vector3{
@@ -62,37 +66,31 @@ pub fn calculateOrthoFrustum(
         max_d = @max(max_d, d);
     }
 
-    const near_dist: f32 = @max(0.01, min_d);
-    const far_dist: f32 = @max(near_dist + 0.01, max_d);
+    // Expand near/far by padding. Negative near is fine for ortho (no z-fighting).
+    const near_dist = min_d - padding;
+    const far_dist = max_d + padding;
 
+    // Build frustum corners and compute world-space AABB.
     const center_near = v3.add(camera.position, v3.scale(forward, near_dist));
     const center_far = v3.add(camera.position, v3.scale(forward, far_dist));
 
-    // Compute AABB of frustum in world space
-    var min_x: f32 = std.math.inf(f32);
-    var max_x: f32 = -std.math.inf(f32);
-    var min_y: f32 = std.math.inf(f32);
-    var max_y: f32 = -std.math.inf(f32);
-    var min_z: f32 = std.math.inf(f32);
-    var max_z: f32 = -std.math.inf(f32);
+    var aabb_min = raylib.Vector3{ .x = std.math.inf(f32), .y = std.math.inf(f32), .z = std.math.inf(f32) };
+    var aabb_max = raylib.Vector3{ .x = -std.math.inf(f32), .y = -std.math.inf(f32), .z = -std.math.inf(f32) };
 
-    const centers = [_]raylib.Vector3{ center_near, center_far };
-    const offsets = [_][2]f32{
-        .{ -half_width, -half_height },
-        .{ -half_width, half_height },
-        .{ half_width, -half_height },
-        .{ half_width, half_height },
-    };
-
-    for (centers) |center| {
-        for (offsets) |off| {
+    for ([_]raylib.Vector3{ center_near, center_far }) |center| {
+        for ([_][2]f32{
+            .{ -half_width, -half_height },
+            .{ -half_width, half_height },
+            .{ half_width, -half_height },
+            .{ half_width, half_height },
+        }) |off| {
             const corner = v3.add(v3.add(center, v3.scale(right, off[0])), v3.scale(up, off[1]));
-            min_x = @min(min_x, corner.x);
-            max_x = @max(max_x, corner.x);
-            min_y = @min(min_y, corner.y);
-            max_y = @max(max_y, corner.y);
-            min_z = @min(min_z, corner.z);
-            max_z = @max(max_z, corner.z);
+            aabb_min.x = @min(aabb_min.x, corner.x);
+            aabb_max.x = @max(aabb_max.x, corner.x);
+            aabb_min.y = @min(aabb_min.y, corner.y);
+            aabb_max.y = @max(aabb_max.y, corner.y);
+            aabb_min.z = @min(aabb_min.z, corner.z);
+            aabb_max.z = @max(aabb_max.z, corner.z);
         }
     }
 
@@ -105,12 +103,12 @@ pub fn calculateOrthoFrustum(
         .half_height = half_height,
         .near_dist = near_dist,
         .far_dist = far_dist,
-        .aabb_min_x = min_x,
-        .aabb_max_x = max_x,
-        .aabb_min_y = min_y,
-        .aabb_max_y = max_y,
-        .aabb_min_z = min_z,
-        .aabb_max_z = max_z,
+        .aabb_min_x = aabb_min.x,
+        .aabb_max_x = aabb_max.x,
+        .aabb_min_y = aabb_min.y,
+        .aabb_max_y = aabb_max.y,
+        .aabb_min_z = aabb_min.z,
+        .aabb_max_z = aabb_max.z,
     };
 }
 

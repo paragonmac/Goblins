@@ -7,6 +7,7 @@ fn intersectRayYPlane(ray: raylib.Ray, plane_y: f32) ?raylib.Vector3 {
     const denom = ray.direction.y;
     if (@abs(denom) < 0.000001) return null;
     const t = (plane_y - ray.position.y) / denom;
+    if (t < 0.0) return null;
     return .{
         .x = ray.position.x + ray.direction.x * t,
         .y = plane_y,
@@ -14,14 +15,14 @@ fn intersectRayYPlane(ray: raylib.Ray, plane_y: f32) ?raylib.Vector3 {
     };
 }
 
-const WorldRect = struct {
+const WorldRectXZ = struct {
     min_x: f32,
     max_x: f32,
     min_z: f32,
     max_z: f32,
 };
 
-fn worldRectFromScreenDrag(start: raylib.Vector2, end: raylib.Vector2, camera: raylib.Camera3D, plane_y: f32) ?WorldRect {
+fn worldRectFromScreenDrag(start: raylib.Vector2, end: raylib.Vector2, camera: raylib.Camera3D, plane_y: f32) ?WorldRectXZ {
     const r0 = raylib.getScreenToWorldRay(start, camera);
     const r1 = raylib.getScreenToWorldRay(end, camera);
 
@@ -34,6 +35,92 @@ fn worldRectFromScreenDrag(start: raylib.Vector2, end: raylib.Vector2, camera: r
         .min_z = @min(a.z, b.z),
         .max_z = @max(a.z, b.z),
     };
+}
+
+fn drawWorldSelectionRect(camera: raylib.Camera3D, start: raylib.Vector2, end: raylib.Vector2, plane_y: f32) void {
+    const rect = worldRectFromScreenDrag(start, end, camera, plane_y) orelse return;
+
+    // Slight lift to reduce z-fighting against the top faces.
+    const y = plane_y + 0.01;
+    const p1 = raylib.Vector3{ .x = rect.min_x, .y = y, .z = rect.min_z };
+    const p2 = raylib.Vector3{ .x = rect.max_x, .y = y, .z = rect.min_z };
+    const p3 = raylib.Vector3{ .x = rect.max_x, .y = y, .z = rect.max_z };
+    const p4 = raylib.Vector3{ .x = rect.min_x, .y = y, .z = rect.max_z };
+
+    const fill = raylib.Color{ .r = 0, .g = 255, .b = 0, .a = 30 };
+    const border = raylib.Color{ .r = 0, .g = 255, .b = 0, .a = 220 };
+    raylib.drawTriangle3D(p1, p2, p3, fill);
+    raylib.drawTriangle3D(p1, p3, p4, fill);
+    raylib.drawLine3D(p1, p2, border);
+    raylib.drawLine3D(p2, p3, border);
+    raylib.drawLine3D(p3, p4, border);
+    raylib.drawLine3D(p4, p1, border);
+}
+
+fn drawGreenBlocksInWorldRect(world: *Goblinoria.World, rect: WorldRectXZ, plane_internal_y: i16) void {
+    const world_max_x: i32 = @as(i32, Goblinoria.World.worldSizeBlocksX());
+    const world_max_y: i32 = @as(i32, Goblinoria.World.worldSizeBlocksY());
+    const world_max_z: i32 = @as(i32, Goblinoria.World.worldSizeBlocksZ());
+
+    const yi: i32 = @as(i32, plane_internal_y);
+    if (yi < 0 or yi >= world_max_y) return;
+
+    // Blocks are centered at integer coords (block N spans N-0.5 to N+0.5).
+    // Shift by +0.5 before flooring to get the correct block index.
+    const x0: i32 = std.math.clamp(@as(i32, @intFromFloat(@floor(rect.min_x + 0.5))), 0, world_max_x - 1);
+    const x1: i32 = std.math.clamp(@as(i32, @intFromFloat(@floor(rect.max_x + 0.5))), 0, world_max_x - 1);
+    const z0: i32 = std.math.clamp(@as(i32, @intFromFloat(@floor(rect.min_z + 0.5))), 0, world_max_z - 1);
+    const z1: i32 = std.math.clamp(@as(i32, @intFromFloat(@floor(rect.max_z + 0.5))), 0, world_max_z - 1);
+
+    const scroll_y: f32 = @floatFromInt(world.vertical_scroll);
+    const fill = raylib.Color{ .r = 0, .g = 255, .b = 0, .a = 255 };
+    const wire = raylib.Color{ .r = 0, .g = 255, .b = 0, .a = 255 };
+
+    var x: i32 = @min(x0, x1);
+    while (x <= @max(x0, x1)) : (x += 1) {
+        var z: i32 = @min(z0, z1);
+        while (z <= @max(z0, z1)) : (z += 1) {
+            if (world.isBlockSolid(@intCast(x), @intCast(yi), @intCast(z))) {
+                // Mesh convention: block center is at integer coord.
+                const pos = raylib.Vector3{
+                    .x = @as(f32, @floatFromInt(x)),
+                    .y = @as(f32, @floatFromInt(yi)) + scroll_y,
+                    .z = @as(f32, @floatFromInt(z)),
+                };
+                raylib.drawCube(pos, 1.0, 1.0, 1.0, fill);
+                raylib.drawCubeWires(pos, 1.02, 1.02, 1.02, wire);
+            }
+        }
+    }
+}
+
+fn addSelectionInWorldRect(world: *Goblinoria.World, rect: WorldRectXZ, plane_internal_y: i16) bool {
+    const world_max_x: i32 = @as(i32, Goblinoria.World.worldSizeBlocksX());
+    const world_max_y: i32 = @as(i32, Goblinoria.World.worldSizeBlocksY());
+    const world_max_z: i32 = @as(i32, Goblinoria.World.worldSizeBlocksZ());
+
+    const yi: i32 = @as(i32, plane_internal_y);
+    if (yi < 0 or yi >= world_max_y) return false;
+
+    // Blocks are centered at integer coords (block N spans N-0.5 to N+0.5).
+    // Shift by +0.5 before flooring to get the correct block index.
+    const x0: i32 = std.math.clamp(@as(i32, @intFromFloat(@floor(rect.min_x + 0.5))), 0, world_max_x - 1);
+    const x1: i32 = std.math.clamp(@as(i32, @intFromFloat(@floor(rect.max_x + 0.5))), 0, world_max_x - 1);
+    const z0: i32 = std.math.clamp(@as(i32, @intFromFloat(@floor(rect.min_z + 0.5))), 0, world_max_z - 1);
+    const z1: i32 = std.math.clamp(@as(i32, @intFromFloat(@floor(rect.max_z + 0.5))), 0, world_max_z - 1);
+
+    var any: bool = false;
+    var x: i32 = @min(x0, x1);
+    while (x <= @max(x0, x1)) : (x += 1) {
+        var z: i32 = @min(z0, z1);
+        while (z <= @max(z0, z1)) : (z += 1) {
+            if (world.isBlockSolid(@intCast(x), @intCast(yi), @intCast(z))) {
+                any = true;
+                world.addToSelection(@intCast(x), @intCast(yi), @intCast(z));
+            }
+        }
+    }
+    return any;
 }
 
 fn drawTopRenderLevelHud(world: *const Goblinoria.World) void {
@@ -94,6 +181,7 @@ pub fn run() !void {
     var drag_start: ?raylib.Vector2 = null;
     var is_dragging: bool = false;
     var drag_plane_internal_y: ?i16 = null;
+    var drag_rect: ?WorldRectXZ = null;
 
     while (!raylib.windowShouldClose()) {
         if (raylib.isKeyPressed(raylib.KeyboardKey.f2)) {
@@ -148,10 +236,10 @@ pub fn run() !void {
             drag_start = raylib.getMousePosition();
             is_dragging = false;
             drag_plane_internal_y = null;
-            world.clearPreviewSelection();
+            drag_rect = null;
         }
 
-        // Drag preview: filled rectangle on a fixed Y plane (tunnel)
+        // Drag preview: world-aligned rectangle on a fixed Y plane.
         if (raylib.isMouseButtonDown(raylib.MouseButton.left)) {
             if (drag_start) |start| {
                 const current = raylib.getMousePosition();
@@ -172,29 +260,11 @@ pub fn run() !void {
                     const scroll_y: f32 = @floatFromInt(world.vertical_scroll);
                     const plane_y: f32 = @as(f32, @floatFromInt(plane_internal_y)) + 0.5 + scroll_y;
 
-                    world.clearPreviewSelection();
                     const rect_opt = worldRectFromScreenDrag(start, current, renderer.ortho_camera, plane_y);
                     if (rect_opt) |rect| {
-                        const world_max_x: i32 = @as(i32, Goblinoria.World.worldSizeBlocksX());
-                        const world_max_z: i32 = @as(i32, Goblinoria.World.worldSizeBlocksZ());
-
-                        const x0: i32 = std.math.clamp(@as(i32, @intFromFloat(@floor(rect.min_x))), 0, world_max_x - 1);
-                        const x1: i32 = std.math.clamp(@as(i32, @intFromFloat(@floor(rect.max_x))), 0, world_max_x - 1);
-                        const z0: i32 = std.math.clamp(@as(i32, @intFromFloat(@floor(rect.min_z))), 0, world_max_z - 1);
-                        const z1: i32 = std.math.clamp(@as(i32, @intFromFloat(@floor(rect.max_z))), 0, world_max_z - 1);
-
-                        const yi: i32 = @as(i32, plane_internal_y);
-                        if (yi >= 0 and yi < @as(i32, Goblinoria.World.worldSizeBlocksY())) {
-                            var x: i32 = @min(x0, x1);
-                            while (x <= @max(x0, x1)) : (x += 1) {
-                                var z: i32 = @min(z0, z1);
-                                while (z <= @max(z0, z1)) : (z += 1) {
-                                    if (world.isBlockSolid(@intCast(x), @intCast(yi), @intCast(z))) {
-                                        world.addToPreviewSelection(@intCast(x), @intCast(yi), @intCast(z));
-                                    }
-                                }
-                            }
-                        }
+                        drag_rect = rect;
+                    } else {
+                        drag_rect = null;
                     }
                 }
             }
@@ -202,10 +272,12 @@ pub fn run() !void {
 
         // Release: commit drag or do click select
         if (raylib.isMouseButtonReleased(raylib.MouseButton.left)) {
-            const preview_count: usize = world.preview_blocks.count();
-            if (is_dragging and preview_count != 0) {
-                world.commitPreviewSelection();
-            } else if (drag_start != null) {
+            var did_drag_select: bool = false;
+            if (is_dragging and drag_rect != null and drag_plane_internal_y != null) {
+                did_drag_select = addSelectionInWorldRect(world, drag_rect.?, drag_plane_internal_y.?);
+            }
+
+            if (!did_drag_select and drag_start != null) {
                 const mouse_pos = raylib.getMousePosition();
                 const ray = raylib.getScreenToWorldRay(mouse_pos, renderer.ortho_camera);
                 const hit = Goblinoria.raycastBlock(world, ray, 500.0);
@@ -214,15 +286,14 @@ pub fn run() !void {
                 }
             }
 
-            world.clearPreviewSelection();
             drag_start = null;
             is_dragging = false;
             drag_plane_internal_y = null;
+            drag_rect = null;
         }
 
         if (raylib.isKeyPressed(raylib.KeyboardKey.escape)) {
             world.clearSelection();
-            world.clearPreviewSelection();
         }
 
         renderer.update(wheel_for_camera);
@@ -233,18 +304,46 @@ pub fn run() !void {
         const render_stats = renderer.render(world);
         drawTopRenderLevelHud(world);
 
+        if (is_dragging) {
+            if (drag_start) |start| {
+                const current = raylib.getMousePosition();
+                if (drag_plane_internal_y) |plane_internal_y| {
+                    const scroll_y: f32 = @floatFromInt(world.vertical_scroll);
+                    const plane_y: f32 = @as(f32, @floatFromInt(plane_internal_y)) + 0.5 + scroll_y;
+                    raylib.beginMode3D(renderer.ortho_camera);
+                    drawWorldSelectionRect(renderer.ortho_camera, start, current, plane_y);
+                    if (drag_rect) |rect| {
+                        drawGreenBlocksInWorldRect(world, rect, plane_internal_y);
+                    }
+                    raylib.endMode3D();
+                }
+            }
+        }
+
         debugMenu.draw(
             10,
             10,
+            render_stats.cpu_render_ms,
+            render_stats.cpu_mesh_regen_ms,
+            render_stats.cpu_frustum_ms,
+            render_stats.cpu_chunk_loop_ms,
+            render_stats.cpu_grid_ms,
+            render_stats.cpu_overlays_ms,
             render_stats.triangles_drawn,
+            render_stats.triangles_facing_camera,
             render_stats.visible_blocks_drawn,
             render_stats.solid_blocks_drawn,
             @intCast(Goblinoria.World.totalBlockSlots()),
             world.vertical_scroll,
             render_stats.chunks_drawn,
+            render_stats.chunks_in_frustum,
             render_stats.chunks_regenerated,
+            render_stats.chunks_regen_deferred,
+            render_stats.chunk_regen_budget,
             render_stats.chunks_considered,
             render_stats.chunks_culled,
+            render_stats.chunks_frustum_culled,
+            render_stats.chunks_empty,
         );
 
         raylib.endDrawing();

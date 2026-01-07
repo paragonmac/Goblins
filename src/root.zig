@@ -28,13 +28,9 @@ pub const WORLDGEN_SEED: u64 = 0x9E37_79B9_7F4A_7C15; // fixed seed for determin
 const renderer = @import("renderer.zig");
 pub const Renderer = renderer.Renderer;
 
-const selection = @import("selection/drag_select.zig");
-pub const BlockHit = selection.BlockHit;
-pub const raycastBlock = selection.raycastBlock;
-pub const drawSelectionRect = selection.drawSelectionRect;
-pub const dragSelectBlocks = selection.dragSelectBlocks;
-pub const dragPreviewBlocks = selection.dragPreviewBlocks;
-pub const dragPreviewBlocksFixedY = selection.dragPreviewBlocksFixedY;
+const raycast = @import("selection/raycast.zig");
+pub const BlockHit = raycast.BlockHit;
+pub const raycastBlock = raycast.raycastBlock;
 
 const Chunk = struct {
     blocks: [CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE]BlockType,
@@ -45,6 +41,9 @@ const ChunkMesh = struct {
     model: ?raylib.Model,
     grid_line_vertices: ?[]f32,
     triangle_count: u32,
+    // Triangle counts emitted per axis-aligned face normal.
+    // Index order: +Y, -Y, +Z, -Z, +X, -X.
+    triangles_by_face: [6]u32,
     visible_block_count: u32,
     solid_block_count: u32,
     world_min: raylib.Vector3,
@@ -55,6 +54,7 @@ const ChunkMesh = struct {
             .model = null,
             .grid_line_vertices = null,
             .triangle_count = 0,
+            .triangles_by_face = [_]u32{0} ** 6,
             .visible_block_count = 0,
             .solid_block_count = 0,
             .world_min = .{ .x = 0, .y = 0, .z = 0 },
@@ -91,8 +91,6 @@ pub const World = struct {
     vertical_scroll: i32,
     /// Set of currently selected block coordinates.
     selected_blocks: std.AutoHashMap(BlockCoord, void),
-    /// Temporary selection used for live highlighting during a drag.
-    preview_blocks: std.AutoHashMap(BlockCoord, void),
 
     pub fn worldSizeBlocksX() i16 {
         return @intCast(WORLD_SIZE_CHUNKS_X * CHUNK_SIZE);
@@ -221,7 +219,6 @@ pub const World = struct {
         world.top_render_y_index = world.sea_level_y_index;
         world.vertical_scroll = 0;
         world.selected_blocks = std.AutoHashMap(BlockCoord, void).init(allocator);
-        world.preview_blocks = std.AutoHashMap(BlockCoord, void).init(allocator);
 
         // Initialize worker on top of the debug cube
         world.worker = Worker{ .x = 4.0, .y = @as(f32, @floatFromInt(world.sea_level_y_index)) + 9.5, .z = 4.0 };
@@ -234,24 +231,7 @@ pub const World = struct {
             cm.deinit(allocator);
         }
         self.selected_blocks.deinit();
-        self.preview_blocks.deinit();
         allocator.destroy(self);
-    }
-
-    pub fn clearPreviewSelection(self: *World) void {
-        self.preview_blocks.clearRetainingCapacity();
-    }
-
-    pub fn addToPreviewSelection(self: *World, x: u16, y: u16, z: u16) void {
-        const coord = BlockCoord{ .x = x, .y = y, .z = z };
-        _ = self.preview_blocks.fetchPut(coord, {}) catch return;
-    }
-
-    pub fn commitPreviewSelection(self: *World) void {
-        var it = self.preview_blocks.keyIterator();
-        while (it.next()) |coord| {
-            self.addToSelection(coord.x, coord.y, coord.z);
-        }
     }
 
     /// Check if a block at the given coordinates is selected.
