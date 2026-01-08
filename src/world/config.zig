@@ -1,0 +1,9 @@
+pub const WORLD_SIZE_CHUNKS_BASE = 13;
+pub const WORLD_TILES_X = 5; // current cube + 4 more (option A)
+pub const WORLD_TILES_Z = 5; // current cube + 4 more (option A)
+pub const WORLD_SIZE_CHUNKS_X = WORLD_SIZE_CHUNKS_BASE * WORLD_TILES_X;
+pub const WORLD_SIZE_CHUNKS_Y = WORLD_SIZE_CHUNKS_BASE;
+pub const WORLD_SIZE_CHUNKS_Z = WORLD_SIZE_CHUNKS_BASE * WORLD_TILES_Z;
+pub const WORLD_TOTAL_CHUNKS: usize = WORLD_SIZE_CHUNKS_X * WORLD_SIZE_CHUNKS_Y * WORLD_SIZE_CHUNKS_Z;
+pub const CHUNK_SIZE = 8;
+pub const WORLDGEN_SEED: u64 = 0x9E37_79B9_7F4A_7C15; // fixed seed for deterministic worldgen

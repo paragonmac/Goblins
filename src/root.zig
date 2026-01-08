@@ -2,28 +2,27 @@
 
 const std = @import("std");
 const raylib = @import("raylib");
-pub const BlockType = u8;
+const world_types = @import("world/types.zig");
+const world_config = @import("world/config.zig");
 
-pub const BlockCoord = struct {
-    x: u16,
-    y: u16,
-    z: u16,
-};
+pub const BlockType = world_types.BlockType;
+pub const BlockCoord = world_types.BlockCoord;
+pub const STAIR_BLOCK_ID = world_types.STAIR_BLOCK_ID;
 
-pub const WORLD_SIZE_CHUNKS_BASE = 13;
-pub const WORLD_TILES_X = 5; // current cube + 4 more (option A)
-pub const WORLD_TILES_Z = 5; // current cube + 4 more (option A)
-pub const WORLD_SIZE_CHUNKS_X = WORLD_SIZE_CHUNKS_BASE * WORLD_TILES_X;
-pub const WORLD_SIZE_CHUNKS_Y = WORLD_SIZE_CHUNKS_BASE;
-pub const WORLD_SIZE_CHUNKS_Z = WORLD_SIZE_CHUNKS_BASE * WORLD_TILES_Z;
-pub const WORLD_TOTAL_CHUNKS: usize = WORLD_SIZE_CHUNKS_X * WORLD_SIZE_CHUNKS_Y * WORLD_SIZE_CHUNKS_Z;
-pub const CHUNK_SIZE = 8;
+pub const WORLD_SIZE_CHUNKS_BASE = world_config.WORLD_SIZE_CHUNKS_BASE;
+pub const WORLD_TILES_X = world_config.WORLD_TILES_X;
+pub const WORLD_TILES_Z = world_config.WORLD_TILES_Z;
+pub const WORLD_SIZE_CHUNKS_X = world_config.WORLD_SIZE_CHUNKS_X;
+pub const WORLD_SIZE_CHUNKS_Y = world_config.WORLD_SIZE_CHUNKS_Y;
+pub const WORLD_SIZE_CHUNKS_Z = world_config.WORLD_SIZE_CHUNKS_Z;
+pub const WORLD_TOTAL_CHUNKS: usize = world_config.WORLD_TOTAL_CHUNKS;
+pub const CHUNK_SIZE = world_config.CHUNK_SIZE;
 pub const MAX_DEPTH_BLOCKS: i32 = 20000;
 
 const MATERIAL_ID_MIN: BlockType = 1;
 const MATERIAL_ID_MAX: BlockType = 9;
 const MATERIAL_ID_COUNT: u8 = 9;
-pub const WORLDGEN_SEED: u64 = 0x9E37_79B9_7F4A_7C15; // fixed seed for deterministic worldgen
+pub const WORLDGEN_SEED: u64 = world_config.WORLDGEN_SEED;
 
 const renderer = @import("renderer.zig");
 pub const Renderer = renderer.Renderer;
@@ -31,6 +30,20 @@ pub const Renderer = renderer.Renderer;
 const raycast = @import("selection/raycast.zig");
 pub const BlockHit = raycast.BlockHit;
 pub const raycastBlock = raycast.raycastBlock;
+
+pub const mode = @import("mode.zig");
+pub const PlayerMode = mode.PlayerMode;
+
+pub const task = @import("task.zig");
+pub const Task = task.Task;
+pub const TaskQueue = task.TaskQueue;
+pub const TaskType = task.TaskType;
+pub const TaskStatus = task.TaskStatus;
+
+pub const worker = @import("worker.zig");
+pub const Worker = worker.Worker;
+pub const WorkerManager = worker.WorkerManager;
+pub const WorkerState = worker.WorkerState;
 
 const Chunk = struct {
     blocks: [CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE]BlockType,
@@ -73,17 +86,13 @@ const ChunkMesh = struct {
     }
 };
 
-pub const Worker = struct {
-    x: f32,
-    y: f32,
-    z: f32,
-};
+// Old simple Worker struct removed - now using worker.Worker from worker.zig
 
 pub const World = struct {
     chunks: [WORLD_TOTAL_CHUNKS]Chunk,
     chunk_meshes: [WORLD_TOTAL_CHUNKS]ChunkMesh,
     allocator: std.mem.Allocator,
-    worker: ?Worker,
+    worker_manager: WorkerManager,
     sea_level_y_index: i16,
     top_render_y_index: i16,
     /// World-space vertical offset in blocks for the current in-memory window.
@@ -91,6 +100,10 @@ pub const World = struct {
     vertical_scroll: i32,
     /// Set of currently selected block coordinates.
     selected_blocks: std.AutoHashMap(BlockCoord, void),
+    /// Current player interaction mode
+    player_mode: PlayerMode,
+    /// Queue of tasks for workers
+    task_queue: TaskQueue,
 
     pub fn worldSizeBlocksX() i16 {
         return @intCast(WORLD_SIZE_CHUNKS_X * CHUNK_SIZE);
@@ -219,9 +232,10 @@ pub const World = struct {
         world.top_render_y_index = world.sea_level_y_index;
         world.vertical_scroll = 0;
         world.selected_blocks = std.AutoHashMap(BlockCoord, void).init(allocator);
+        world.player_mode = .dig; // Default to dig mode for easier testing
+        world.task_queue = TaskQueue.init(allocator);
+        world.worker_manager = WorkerManager.init(allocator);
 
-        // Initialize worker on top of the debug cube
-        world.worker = Worker{ .x = 4.0, .y = @as(f32, @floatFromInt(world.sea_level_y_index)) + 9.5, .z = 4.0 };
         return world;
     }
 
@@ -231,6 +245,8 @@ pub const World = struct {
             cm.deinit(allocator);
         }
         self.selected_blocks.deinit();
+        self.task_queue.deinit();
+        self.worker_manager.deinit();
         allocator.destroy(self);
     }
 
@@ -398,5 +414,37 @@ pub const World = struct {
 
     pub fn seedDebug(self: *World) void {
         @import("world/worldgen.zig").seedDebug(self);
+    }
+
+    pub fn spawnInitialWorkers(self: *World) void {
+        const max_x: i32 = @as(i32, worldSizeBlocksX()) - 1;
+        const max_z: i32 = @as(i32, worldSizeBlocksZ()) - 1;
+        const center_x: i32 = @divFloor(@as(i32, worldSizeBlocksX()), 2);
+        const center_z: i32 = @divFloor(@as(i32, worldSizeBlocksZ()), 2);
+
+        const offsets = [_][2]i32{
+            .{ -10, -10 },
+            .{ 10, -10 },
+            .{ -10, 10 },
+            .{ 10, 10 },
+        };
+
+        for (offsets) |offset| {
+            const spawn_x = std.math.clamp(center_x + offset[0], 0, max_x);
+            const spawn_z = std.math.clamp(center_z + offset[1], 0, max_z);
+            const surface_y = self.findSurfaceY(@intCast(spawn_x), @intCast(spawn_z));
+            const spawn_y: f32 = @floatFromInt(surface_y + 1);
+            _ = self.worker_manager.spawnWorker(@floatFromInt(spawn_x), spawn_y, @floatFromInt(spawn_z)) catch {};
+        }
+    }
+
+    fn findSurfaceY(self: *const World, x: u16, z: u16) u16 {
+        var y: i32 = @as(i32, worldMaxYIndex());
+        while (y >= 0) : (y -= 1) {
+            if (self.getBlock(x, @intCast(y), z) != 0) {
+                return @intCast(y);
+            }
+        }
+        return 0;
     }
 };

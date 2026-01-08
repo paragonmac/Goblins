@@ -2,6 +2,8 @@ const std = @import("std");
 const Goblinoria = @import("Goblinoria");
 const raylib = @import("raylib");
 const debugMenu = @import("debugTools");
+const PlayerMode = Goblinoria.PlayerMode;
+const STAIR_BLOCK_ID = Goblinoria.STAIR_BLOCK_ID;
 
 fn intersectRayYPlane(ray: raylib.Ray, plane_y: f32) ?raylib.Vector3 {
     const denom = ray.direction.y;
@@ -150,6 +152,89 @@ fn drawTopRenderLevelHud(world: *const Goblinoria.World) void {
     raylib.drawText(level_str, x + 6, y + 4, font_size, raylib.Color.ray_white);
 }
 
+fn drawModeHud(world: *const Goblinoria.World) void {
+    const padding: i32 = 10;
+    const font_size: i32 = 20;
+
+    // Mode display
+    const mode_name = world.player_mode.displayName();
+    const mode_hint = world.player_mode.keyHint();
+
+    var buf: [64]u8 = undefined;
+    const mode_str = std.fmt.bufPrintZ(&buf, "Mode: {s} {s}", .{ mode_name, mode_hint }) catch "Mode: ?";
+
+    const w = raylib.measureText(mode_str, font_size);
+    const box_w: i32 = w + 12;
+    const box_h: i32 = font_size + 8;
+
+    // Bottom-left corner
+    const x = padding;
+    const y = raylib.getScreenHeight() - box_h - padding;
+
+    // Color based on mode
+    const mode_color: raylib.Color = switch (world.player_mode) {
+        .information => raylib.Color{ .r = 100, .g = 100, .b = 255, .a = 200 }, // Blue
+        .dig => raylib.Color{ .r = 255, .g = 100, .b = 100, .a = 200 }, // Red
+        .place => raylib.Color{ .r = 100, .g = 255, .b = 100, .a = 200 }, // Green
+        .stairs => raylib.Color{ .r = 160, .g = 120, .b = 60, .a = 200 }, // Brown
+    };
+
+    raylib.drawRectangle(x, y, box_w, box_h, mode_color);
+    raylib.drawRectangleLines(x, y, box_w, box_h, raylib.Color.ray_white);
+    raylib.drawText(mode_str, x + 6, y + 4, font_size, raylib.Color.ray_white);
+
+    // Task count display (if there are tasks)
+    const task_count = world.task_queue.activeCount();
+    if (task_count > 0) {
+        var task_buf: [64]u8 = undefined;
+        const task_str = std.fmt.bufPrintZ(&task_buf, "Tasks: {d}", .{task_count}) catch "Tasks: ?";
+        const task_w = raylib.measureText(task_str, font_size);
+        const task_box_w: i32 = task_w + 12;
+        const task_x = padding;
+        const task_y = y - box_h - 5;
+
+        raylib.drawRectangle(task_x, task_y, task_box_w, box_h, raylib.Color{ .r = 0, .g = 0, .b = 0, .a = 180 });
+        raylib.drawRectangleLines(task_x, task_y, task_box_w, box_h, raylib.Color.ray_white);
+        raylib.drawText(task_str, task_x + 6, task_y + 4, font_size, raylib.Color.yellow);
+    }
+}
+
+fn drawModeHelp() void {
+    const font_size: i32 = 16;
+    const padding: i32 = 10;
+    const line_height: i32 = 20;
+
+    const help_lines = [_][:0]const u8{
+        "[1] Info mode - inspect blocks",
+        "[2] Dig mode - select blocks to dig",
+        "[3] Place mode - select where to build",
+        "[4] Stairs mode - convert blocks to stairs",
+    };
+
+    const max_w = blk: {
+        var max: i32 = 0;
+        for (help_lines) |line| {
+            const w = raylib.measureText(line, font_size);
+            if (w > max) max = w;
+        }
+        break :blk max;
+    };
+
+    const box_w: i32 = max_w + 12;
+    const box_h: i32 = @intCast(help_lines.len * line_height + 8);
+
+    // Top-left corner, below debug menu area
+    const x = padding;
+    const y = padding;
+
+    raylib.drawRectangle(x, y, box_w, box_h, raylib.Color{ .r = 0, .g = 0, .b = 0, .a = 120 });
+
+    for (help_lines, 0..) |line, i| {
+        const line_y = y + 4 + @as(i32, @intCast(i)) * line_height;
+        raylib.drawText(line, x + 6, line_y, font_size, raylib.Color{ .r = 200, .g = 200, .b = 200, .a = 255 });
+    }
+}
+
 pub fn run() !void {
     const screenWidth: i32 = 800;
     const screenHeight: i32 = 600;
@@ -168,6 +253,7 @@ pub fn run() !void {
     var world = try Goblinoria.World.init(allocator);
     defer world.deinit(allocator);
     world.seedDebug();
+    world.spawnInitialWorkers();
 
     var renderer = Goblinoria.Renderer.init();
 
@@ -186,6 +272,20 @@ pub fn run() !void {
     while (!raylib.windowShouldClose()) {
         if (raylib.isKeyPressed(raylib.KeyboardKey.f2)) {
             debugMenu.toggle();
+        }
+
+        // Mode switching: 1=Info, 2=Dig, 3=Place
+        if (raylib.isKeyPressed(raylib.KeyboardKey.one)) {
+            world.player_mode = .information;
+        }
+        if (raylib.isKeyPressed(raylib.KeyboardKey.two)) {
+            world.player_mode = .dig;
+        }
+        if (raylib.isKeyPressed(raylib.KeyboardKey.three)) {
+            world.player_mode = .place;
+        }
+        if (raylib.isKeyPressed(raylib.KeyboardKey.four)) {
+            world.player_mode = .stairs;
         }
 
         const dt: f32 = raylib.getFrameTime();
@@ -270,20 +370,101 @@ pub fn run() !void {
             }
         }
 
-        // Release: commit drag or do click select
+        // Release: commit drag or do click select based on mode
         if (raylib.isMouseButtonReleased(raylib.MouseButton.left)) {
             var did_drag_select: bool = false;
-            if (is_dragging and drag_rect != null and drag_plane_internal_y != null) {
-                did_drag_select = addSelectionInWorldRect(world, drag_rect.?, drag_plane_internal_y.?);
-            }
 
-            if (!did_drag_select and drag_start != null) {
-                const mouse_pos = raylib.getMousePosition();
-                const ray = raylib.getScreenToWorldRay(mouse_pos, renderer.ortho_camera);
-                const hit = Goblinoria.raycastBlock(world, ray, 500.0);
-                if (hit.hit) {
-                    world.addToSelection(hit.x, hit.y, hit.z);
-                }
+            switch (world.player_mode) {
+                .information => {
+                    // Single click to inspect - don't do drag selection
+                    if (drag_start != null and !is_dragging) {
+                        const mouse_pos = raylib.getMousePosition();
+                        const ray = raylib.getScreenToWorldRay(mouse_pos, renderer.ortho_camera);
+                        const hit = Goblinoria.raycastBlock(world, ray, 500.0);
+                        if (hit.hit) {
+                            // TODO: Show info popup for block at hit.x, hit.y, hit.z
+                            // For now, just toggle selection to show we detected it
+                            world.toggleBlockSelection(hit.x, hit.y, hit.z);
+                        }
+                    }
+                },
+                .dig => {
+                    // Drag to select, then create dig tasks
+                    if (is_dragging and drag_rect != null and drag_plane_internal_y != null) {
+                        did_drag_select = addSelectionInWorldRect(world, drag_rect.?, drag_plane_internal_y.?);
+                    }
+
+                    if (!did_drag_select and drag_start != null) {
+                        const mouse_pos = raylib.getMousePosition();
+                        const ray = raylib.getScreenToWorldRay(mouse_pos, renderer.ortho_camera);
+                        const hit = Goblinoria.raycastBlock(world, ray, 500.0);
+                        if (hit.hit) {
+                            world.addToSelection(hit.x, hit.y, hit.z);
+                        }
+                    }
+
+                    // Convert selection to dig tasks
+                    var it = world.selected_blocks.keyIterator();
+                    while (it.next()) |coord| {
+                        if (world.isBlockSolid(@intCast(coord.x), @intCast(coord.y), @intCast(coord.z))) {
+                            _ = world.task_queue.addTask(coord.*, .dig) catch {};
+                        }
+                    }
+                    // Clear selection after creating tasks
+                    world.clearSelection();
+                },
+                .place => {
+                    // Drag to select empty spaces, then create place tasks
+                    if (is_dragging and drag_rect != null and drag_plane_internal_y != null) {
+                        did_drag_select = addSelectionInWorldRect(world, drag_rect.?, drag_plane_internal_y.?);
+                    }
+
+                    if (!did_drag_select and drag_start != null) {
+                        const mouse_pos = raylib.getMousePosition();
+                        const ray = raylib.getScreenToWorldRay(mouse_pos, renderer.ortho_camera);
+                        const hit = Goblinoria.raycastBlock(world, ray, 500.0);
+                        if (hit.hit) {
+                            // For place mode, select the block above the hit
+                            if (hit.y < Goblinoria.World.worldSizeBlocksY() - 1) {
+                                world.addToSelection(hit.x, hit.y + 1, hit.z);
+                            }
+                        }
+                    }
+
+                    // Convert selection to place tasks (for empty blocks)
+                    var it = world.selected_blocks.keyIterator();
+                    while (it.next()) |coord| {
+                        if (!world.isBlockSolid(@intCast(coord.x), @intCast(coord.y), @intCast(coord.z))) {
+                            _ = world.task_queue.addPlaceTask(coord.*, 8) catch {}; // Material 8 = stone
+                        }
+                    }
+                    world.clearSelection();
+                },
+                .stairs => {
+                    // Drag to select solid blocks, then convert to stairs
+                    if (is_dragging and drag_rect != null and drag_plane_internal_y != null) {
+                        did_drag_select = addSelectionInWorldRect(world, drag_rect.?, drag_plane_internal_y.?);
+                    }
+
+                    if (!did_drag_select and drag_start != null) {
+                        const mouse_pos = raylib.getMousePosition();
+                        const ray = raylib.getScreenToWorldRay(mouse_pos, renderer.ortho_camera);
+                        const hit = Goblinoria.raycastBlock(world, ray, 500.0);
+                        if (hit.hit) {
+                            world.addToSelection(hit.x, hit.y, hit.z);
+                        }
+                    }
+
+                    // Convert selection to stairs tasks (for solid blocks)
+                    var it = world.selected_blocks.keyIterator();
+                    while (it.next()) |coord| {
+                        const block = world.getBlock(@intCast(coord.x), @intCast(coord.y), @intCast(coord.z));
+                        if (block != 0 and block != STAIR_BLOCK_ID) {
+                            _ = world.task_queue.addStairsTask(coord.*) catch {};
+                        }
+                    }
+                    world.clearSelection();
+                },
             }
 
             drag_start = null;
@@ -298,11 +479,18 @@ pub fn run() !void {
 
         renderer.update(wheel_for_camera);
 
+        // Update workers
+        world.worker_manager.updateAll(dt, world, &world.task_queue);
+
         raylib.beginDrawing();
         raylib.clearBackground(raylib.Color.black);
 
         const render_stats = renderer.render(world);
         drawTopRenderLevelHud(world);
+        drawModeHud(world);
+        if (!debugMenu.isOpen()) {
+            drawModeHelp();
+        }
 
         if (is_dragging) {
             if (drag_start) |start| {

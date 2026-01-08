@@ -1,15 +1,16 @@
 const std = @import("std");
 const raylib = @import("raylib");
-const root = @import("root.zig");
+const world_config = @import("world/config.zig");
 
 const frustum_mod = @import("render/frustum.zig");
 const Frustum = frustum_mod.Frustum;
 const calculateOrthoFrustum = frustum_mod.calculateOrthoFrustum;
 const isChunkInFrustum = frustum_mod.isChunkInFrustum;
 
-const WORLD_SIZE_CHUNKS_X = root.WORLD_SIZE_CHUNKS_X;
-const WORLD_SIZE_CHUNKS_Y = root.WORLD_SIZE_CHUNKS_Y;
-const WORLD_SIZE_CHUNKS_Z = root.WORLD_SIZE_CHUNKS_Z;
+const WORLD_SIZE_CHUNKS_X = world_config.WORLD_SIZE_CHUNKS_X;
+const WORLD_SIZE_CHUNKS_Y = world_config.WORLD_SIZE_CHUNKS_Y;
+const WORLD_SIZE_CHUNKS_Z = world_config.WORLD_SIZE_CHUNKS_Z;
+const CHUNK_SIZE = world_config.CHUNK_SIZE;
 
 // we are going to adjust grid size on the fly
 var userAdjustedMax_X: u32 = 100;
@@ -129,7 +130,10 @@ pub const Renderer = struct {
     pub var max_chunk_regens_per_frame: i32 = 64;
 
     pub fn init() Renderer {
-        const sea_y: f32 = @as(f32, @floatFromInt(root.World.seaLevelYIndexDefault()));
+        const world_size_blocks_y: i16 = @intCast(WORLD_SIZE_CHUNKS_Y * CHUNK_SIZE);
+        const mountain_headroom: i16 = 30;
+        const sea_level_y_index: i16 = world_size_blocks_y - 1 - mountain_headroom;
+        const sea_y: f32 = @floatFromInt(sea_level_y_index);
         // Keep the original camera defaults the project started with.
         // (Even if the world size grows, these defaults feel best for the current UX.)
         const orthoCameraTarget = raylib.Vector3{ .x = 52.0, .y = sea_y, .z = 52.0 };
@@ -193,12 +197,12 @@ pub const Renderer = struct {
 
         // Calculate frustum once per frame.
         const frustum_start_ns = std.time.nanoTimestamp();
-        const chunk_size_f: f32 = @floatFromInt(root.CHUNK_SIZE);
+        const chunk_size_f: f32 = @floatFromInt(CHUNK_SIZE);
         const screen_w: f32 = @floatFromInt(raylib.getScreenWidth());
         const screen_h: f32 = @floatFromInt(raylib.getScreenHeight());
-        const world_wx: f32 = @floatFromInt(root.WORLD_SIZE_CHUNKS_X * root.CHUNK_SIZE);
-        const world_wy: f32 = @floatFromInt(root.WORLD_SIZE_CHUNKS_Y * root.CHUNK_SIZE);
-        const world_wz: f32 = @floatFromInt(root.WORLD_SIZE_CHUNKS_Z * root.CHUNK_SIZE);
+        const world_wx: f32 = @floatFromInt(WORLD_SIZE_CHUNKS_X * CHUNK_SIZE);
+        const world_wy: f32 = @floatFromInt(WORLD_SIZE_CHUNKS_Y * CHUNK_SIZE);
+        const world_wz: f32 = @floatFromInt(WORLD_SIZE_CHUNKS_Z * CHUNK_SIZE);
         const scroll_y: f32 = @floatFromInt(world.vertical_scroll);
         const world_min = raylib.Vector3{ .x = 0.0, .y = scroll_y, .z = 0.0 };
         const world_max = raylib.Vector3{ .x = world_wx, .y = scroll_y + world_wy, .z = world_wz };
@@ -280,9 +284,9 @@ pub const Renderer = struct {
                     // Chunk-level frustum culling (use bounds derived from chunk coords).
                     // This allows us to skip expensive mesh regeneration for chunks that won't be drawn.
                     const chunk_min = raylib.Vector3{
-                        .x = @floatFromInt(cx * root.CHUNK_SIZE),
-                        .y = @as(f32, @floatFromInt(cy * root.CHUNK_SIZE)) + scroll_y,
-                        .z = @floatFromInt(cz * root.CHUNK_SIZE),
+                        .x = @floatFromInt(cx * CHUNK_SIZE),
+                        .y = @as(f32, @floatFromInt(cy * CHUNK_SIZE)) + scroll_y,
+                        .z = @floatFromInt(cz * CHUNK_SIZE),
                     };
                     const chunk_max = raylib.Vector3{
                         .x = chunk_min.x + chunk_size_f,
@@ -387,12 +391,67 @@ pub const Renderer = struct {
 
         const overlays_start_ns = std.time.nanoTimestamp();
 
-        // Render worker if present
-        if (world.worker) |w| {
-            const worker_pos = raylib.Vector3{ .x = w.x, .y = w.y + scroll_y, .z = w.z };
-            raylib.drawCube(worker_pos, 0.5, 0.8, 0.5, raylib.Color.red);
-            raylib.drawCubeWires(worker_pos, 0.5, 0.8, 0.5, raylib.Color.maroon);
+        // Render all workers
+        const worker_mod = @import("worker.zig");
+        const worker_width: f32 = 0.5;
+        const worker_height: f32 = 0.8;
+        const worker_y_offset: f32 = 0.5 - (worker_height * 0.5);
+        for (world.worker_manager.workers.items) |w| {
+            const worker_pos = raylib.Vector3{
+                .x = w.x,
+                .y = w.y + scroll_y - worker_y_offset,
+                .z = w.z,
+            };
+
+            // Color based on worker state
+            const body_color: raylib.Color = switch (w.state) {
+                .idle => raylib.Color{ .r = 50, .g = 200, .b = 50, .a = 255 }, // Green
+                .moving => raylib.Color{ .r = 255, .g = 200, .b = 50, .a = 255 }, // Yellow
+                .working => raylib.Color{ .r = 255, .g = 128, .b = 0, .a = 255 }, // Orange
+            };
+            const wire_color: raylib.Color = switch (w.state) {
+                .idle => raylib.Color{ .r = 0, .g = 100, .b = 0, .a = 255 },
+                .moving => raylib.Color{ .r = 150, .g = 100, .b = 0, .a = 255 },
+                .working => raylib.Color{ .r = 150, .g = 50, .b = 0, .a = 255 },
+            };
+            _ = worker_mod; // Silence unused warning
+
+            raylib.drawCube(worker_pos, worker_width, worker_height, worker_width, body_color);
+            raylib.drawCubeWires(worker_pos, worker_width + 0.02, worker_height + 0.02, worker_width + 0.02, wire_color);
             triangles_drawn += 12; // 6 faces * 2 tris
+        }
+
+        // Render task overlays
+        const task_mod = @import("task.zig");
+        for (world.task_queue.tasks.items) |task| {
+            if (task.status == task_mod.TaskStatus.completed) continue;
+
+            // Only render tasks that are within the current Y render range
+            const task_y: i16 = @intCast(task.position.y);
+            if (task_y > world.top_render_y_index) continue;
+
+            const pos = raylib.Vector3{
+                .x = @floatFromInt(task.position.x),
+                .y = @as(f32, @floatFromInt(task.position.y)) + scroll_y,
+                .z = @floatFromInt(task.position.z),
+            };
+
+            const task_color: raylib.Color = switch (task.task_type) {
+                .dig => raylib.Color{ .r = 255, .g = 50, .b = 50, .a = 100 }, // Red for dig
+                .place => raylib.Color{ .r = 50, .g = 50, .b = 255, .a = 100 }, // Blue for place
+                .stairs => raylib.Color{ .r = 180, .g = 120, .b = 40, .a = 100 }, // Amber for stairs
+            };
+
+            const wire_color: raylib.Color = switch (task.task_type) {
+                .dig => raylib.Color{ .r = 255, .g = 0, .b = 0, .a = 200 },
+                .place => raylib.Color{ .r = 0, .g = 0, .b = 255, .a = 200 },
+                .stairs => raylib.Color{ .r = 160, .g = 90, .b = 20, .a = 200 },
+            };
+
+            // Draw slightly larger than the block for visibility
+            raylib.drawCube(pos, 1.05, 1.05, 1.05, task_color);
+            raylib.drawCubeWires(pos, 1.06, 1.06, 1.06, wire_color);
+            triangles_drawn += 12;
         }
 
         overlays_ns += (std.time.nanoTimestamp() - overlays_start_ns);

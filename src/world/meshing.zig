@@ -1,13 +1,16 @@
 const std = @import("std");
 const raylib = @import("raylib");
-const root = @import("../root.zig");
+const world_types = @import("types.zig");
+const world_config = @import("config.zig");
 
-const BlockType = root.BlockType;
+const BlockType = world_types.BlockType;
+const STAIR_BLOCK_ID = world_types.STAIR_BLOCK_ID;
+const CHUNK_SIZE = world_config.CHUNK_SIZE;
 
 const MATERIAL_ID_MIN: BlockType = 1;
 const MATERIAL_ID_MAX: BlockType = 9;
 
-fn isBlockSolidForMeshing(world: *const root.World, x: i16, y: i16, z: i16) bool {
+fn isBlockSolidForMeshing(world: anytype, x: i16, y: i16, z: i16) bool {
     // Treat any blocks above the current render cutoff as air so the slice
     // produces a clean, flat top surface.
     if (y > world.top_render_y_index) return false;
@@ -110,6 +113,8 @@ const MeshBuilder = struct {
         const base_color = if (is_selected)
             // Solid blue for selected blocks (green is reserved for drag preview)
             ColorRGB{ .r = 0, .g = 150, .b = 155 }
+        else if (material_id == STAIR_BLOCK_ID)
+            ColorRGB{ .r = 180, .g = 150, .b = 90 } // Distinct stair tint
         else
             material_palette[@as(usize, @intCast(mid))];
 
@@ -126,19 +131,20 @@ const MeshBuilder = struct {
 };
 
 pub fn generateChunkMesh(
-    world: *root.World,
+    world: anytype,
     chunk_x: usize,
     chunk_y: usize,
     chunk_z: usize,
 ) !void {
-    const chunk_index = root.World.chunkToIndex(chunk_x, chunk_y, chunk_z);
+    const WorldT = @TypeOf(world.*);
+    const chunk_index = WorldT.chunkToIndex(chunk_x, chunk_y, chunk_z);
 
     var builder = MeshBuilder.init(world.allocator);
     defer builder.deinit();
 
-    const world_x_base: u16 = @intCast(chunk_x * root.CHUNK_SIZE);
-    const world_y_base: u16 = @intCast(chunk_y * root.CHUNK_SIZE);
-    const world_z_base: u16 = @intCast(chunk_z * root.CHUNK_SIZE);
+    const world_x_base: u16 = @intCast(chunk_x * CHUNK_SIZE);
+    const world_y_base: u16 = @intCast(chunk_y * CHUNK_SIZE);
+    const world_z_base: u16 = @intCast(chunk_z * CHUNK_SIZE);
 
     const h: f32 = 0.5;
 
@@ -192,9 +198,9 @@ pub fn generateChunkMesh(
     };
 
     // Iterate over blocks in THIS chunk only
-    for (0..root.CHUNK_SIZE) |lx| {
-        for (0..root.CHUNK_SIZE) |ly| {
-            for (0..root.CHUNK_SIZE) |lz| {
+    for (0..CHUNK_SIZE) |lx| {
+        for (0..CHUNK_SIZE) |ly| {
+            for (0..CHUNK_SIZE) |lz| {
                 const wx: u16 = world_x_base + @as(u16, @intCast(lx));
                 const wy: u16 = world_y_base + @as(u16, @intCast(ly));
                 const wz: u16 = world_z_base + @as(u16, @intCast(lz));
@@ -504,9 +510,9 @@ pub fn generateChunkMesh(
         .z = @floatFromInt(world_z_base),
     };
     world.chunk_meshes[chunk_index].world_max = .{
-        .x = @floatFromInt(world_x_base + root.CHUNK_SIZE),
-        .y = @floatFromInt(world_y_base + root.CHUNK_SIZE),
-        .z = @floatFromInt(world_z_base + root.CHUNK_SIZE),
+        .x = @floatFromInt(world_x_base + CHUNK_SIZE),
+        .y = @floatFromInt(world_y_base + CHUNK_SIZE),
+        .z = @floatFromInt(world_z_base + CHUNK_SIZE),
     };
 
     // Mark chunk as clean

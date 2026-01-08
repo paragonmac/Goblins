@@ -1,33 +1,40 @@
 const std = @import("std");
+const world_types = @import("types.zig");
+const world_config = @import("config.zig");
 
-const root = @import("../root.zig");
+const BlockType = world_types.BlockType;
+const WORLD_SIZE_CHUNKS_X = world_config.WORLD_SIZE_CHUNKS_X;
+const WORLD_SIZE_CHUNKS_Y = world_config.WORLD_SIZE_CHUNKS_Y;
+const WORLD_SIZE_CHUNKS_Z = world_config.WORLD_SIZE_CHUNKS_Z;
+const CHUNK_SIZE = world_config.CHUNK_SIZE;
+const WORLDGEN_SEED = world_config.WORLDGEN_SEED;
 
-const BlockType = root.BlockType;
+fn setBlockRaw(world: anytype, x: u16, y: u16, z: u16, block_value: u8) void {
+    const WorldT = @TypeOf(world.*);
+    const chunk_x: usize = @intCast(x / CHUNK_SIZE);
+    const chunk_y: usize = @intCast(y / CHUNK_SIZE);
+    const chunk_z: usize = @intCast(z / CHUNK_SIZE);
+    const chunk_index: usize = WorldT.chunkToIndex(chunk_x, chunk_y, chunk_z);
 
-fn setBlockRaw(world: *root.World, x: u16, y: u16, z: u16, block_value: u8) void {
-    const chunk_x: usize = @intCast(x / root.CHUNK_SIZE);
-    const chunk_y: usize = @intCast(y / root.CHUNK_SIZE);
-    const chunk_z: usize = @intCast(z / root.CHUNK_SIZE);
-    const chunk_index: usize = root.World.chunkToIndex(chunk_x, chunk_y, chunk_z);
-
-    const local_x: u16 = x % root.CHUNK_SIZE;
-    const local_y: u16 = y % root.CHUNK_SIZE;
-    const local_z: u16 = z % root.CHUNK_SIZE;
+    const local_x: u16 = x % CHUNK_SIZE;
+    const local_y: u16 = y % CHUNK_SIZE;
+    const local_z: u16 = z % CHUNK_SIZE;
     const block_index: usize =
-        @as(usize, local_z) * root.CHUNK_SIZE * root.CHUNK_SIZE +
-        @as(usize, local_y) * root.CHUNK_SIZE +
+        @as(usize, local_z) * CHUNK_SIZE * CHUNK_SIZE +
+        @as(usize, local_y) * CHUNK_SIZE +
         @as(usize, local_x);
 
     world.chunks[chunk_index].blocks[block_index] = block_value;
 }
 
-pub fn seedDebug(world: *root.World) void {
-    const world_size_x: usize = root.WORLD_SIZE_CHUNKS_X * root.CHUNK_SIZE;
-    const world_size_y: usize = root.WORLD_SIZE_CHUNKS_Y * root.CHUNK_SIZE;
-    const world_size_z: usize = root.WORLD_SIZE_CHUNKS_Z * root.CHUNK_SIZE;
+pub fn seedDebug(world: anytype) void {
+    const WorldT = @TypeOf(world.*);
+    const world_size_x: usize = WORLD_SIZE_CHUNKS_X * CHUNK_SIZE;
+    const world_size_y: usize = WORLD_SIZE_CHUNKS_Y * CHUNK_SIZE;
+    const world_size_z: usize = WORLD_SIZE_CHUNKS_Z * CHUNK_SIZE;
 
     // Seeded PRNG for deterministic, random-looking material assignment.
-    var prng = std.Random.DefaultPrng.init(root.WORLDGEN_SEED);
+    var prng = std.Random.DefaultPrng.init(WORLDGEN_SEED);
 
     // Clear existing blocks (seedDebug is allowed to blow away previous content).
     for (&world.chunks) |*chunk| {
@@ -38,23 +45,23 @@ pub fn seedDebug(world: *root.World) void {
     const solid_limit_internal_y: i32 = sea_internal - world.vertical_scroll;
 
     // Fill chunks up to sea level.
-    for (0..root.WORLD_SIZE_CHUNKS_Y) |cy| {
-        const y0: i32 = @intCast(cy * root.CHUNK_SIZE);
-        const y1: i32 = y0 + (root.CHUNK_SIZE - 1);
+    for (0..WORLD_SIZE_CHUNKS_Y) |cy| {
+        const y0: i32 = @intCast(cy * CHUNK_SIZE);
+        const y1: i32 = y0 + (CHUNK_SIZE - 1);
 
         if (y1 <= solid_limit_internal_y) {
             // Entire chunk layer is solid.
-            for (0..root.WORLD_SIZE_CHUNKS_X) |cx| {
-                for (0..root.WORLD_SIZE_CHUNKS_Z) |cz| {
-                    const idx = root.World.chunkToIndex(cx, cy, cz);
+            for (0..WORLD_SIZE_CHUNKS_X) |cx| {
+                for (0..WORLD_SIZE_CHUNKS_Z) |cz| {
+                    const idx = WorldT.chunkToIndex(cx, cy, cz);
                     // Fill per-voxel with random material IDs 1..9.
-                    for (0..root.CHUNK_SIZE) |ly| {
-                        for (0..root.CHUNK_SIZE) |lx| {
-                            for (0..root.CHUNK_SIZE) |lz| {
+                    for (0..CHUNK_SIZE) |ly| {
+                        for (0..CHUNK_SIZE) |lx| {
+                            for (0..CHUNK_SIZE) |lz| {
                                 const mat: BlockType = prng.random().intRangeAtMost(BlockType, 1, 9);
                                 const block_index: usize =
-                                    lz * root.CHUNK_SIZE * root.CHUNK_SIZE +
-                                    ly * root.CHUNK_SIZE +
+                                    lz * CHUNK_SIZE * CHUNK_SIZE +
+                                    ly * CHUNK_SIZE +
                                     lx;
                                 world.chunks[idx].blocks[block_index] = mat;
                             }
@@ -65,17 +72,17 @@ pub fn seedDebug(world: *root.World) void {
         } else if (y0 <= solid_limit_internal_y and y1 > solid_limit_internal_y) {
             // Partial layer: fill only internal y <= solid_limit.
             const solid_in_chunk: usize = @intCast((solid_limit_internal_y - y0) + 1);
-            for (0..root.WORLD_SIZE_CHUNKS_X) |cx| {
-                for (0..root.WORLD_SIZE_CHUNKS_Z) |cz| {
-                    const idx = root.World.chunkToIndex(cx, cy, cz);
+            for (0..WORLD_SIZE_CHUNKS_X) |cx| {
+                for (0..WORLD_SIZE_CHUNKS_Z) |cz| {
+                    const idx = WorldT.chunkToIndex(cx, cy, cz);
                     var ly: usize = 0;
                     while (ly < solid_in_chunk) : (ly += 1) {
-                        for (0..root.CHUNK_SIZE) |lx| {
-                            for (0..root.CHUNK_SIZE) |lz| {
+                        for (0..CHUNK_SIZE) |lx| {
+                            for (0..CHUNK_SIZE) |lz| {
                                 const mat: BlockType = prng.random().intRangeAtMost(BlockType, 1, 9);
                                 const block_index: usize =
-                                    lz * root.CHUNK_SIZE * root.CHUNK_SIZE +
-                                    ly * root.CHUNK_SIZE +
+                                    lz * CHUNK_SIZE * CHUNK_SIZE +
+                                    ly * CHUNK_SIZE +
                                     lx;
                                 world.chunks[idx].blocks[block_index] = mat;
                             }
